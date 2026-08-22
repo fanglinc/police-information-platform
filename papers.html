@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文展示 - 公安信息化应用基础</title>
+    <style>
+        body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; background: #f5f7fc; color: #1a1a2e; }
+        h1 { border-bottom: 3px solid #1a3a5c; padding-bottom: 10px; }
+        .paper { background: white; padding: 20px 24px; margin: 20px 0; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 5px solid #2c5a7a; }
+        .paper h3 { margin: 0 0 6px 0; color: #1a3a5c; }
+        .paper .meta { color: #555; font-size: 14px; margin-bottom: 8px; }
+        .paper .abstract { color: #333; font-size: 14px; line-height: 1.6; margin: 10px 0; }
+        .paper .links a { margin-right: 16px; color: #2c5a7a; text-decoration: none; font-weight: 500; }
+        .paper .links a:hover { text-decoration: underline; }
+        .back { display: inline-block; margin-top: 30px; color: #2c5a7a; text-decoration: none; font-weight: 500; }
+    </style>
+</head>
+<body>
+    <h1>📄 论文展示</h1>
+    <p style="color: #555;">本页面汇集了课程相关的已发表论文及优秀学员论文。</p>
+
+    <!-- ===== 已发表论文 ===== -->
+    <div class="paper">
+        <h3>基于三层模型构建嫌疑人画像——电子数据取证中的操作层—身份层—行为层交叉分析</h3>
+        <div class="meta">陈芳琳 · 《公安信息化应用》研究专栏 · 2025年</div>
+        <div class="abstract">
+            <strong>摘要：</strong>面对嫌疑人"不是我操作的""数据被篡改了"等抗辩，单一维度的证据往往不足以形成闭环。
+            本文提出<strong>操作层（做了什么）—身份层（是谁）—行为层（为何）</strong>三层交叉分析模型：
+            在操作层锁定设备行为轨迹，在身份层关联实名信息与生物特征，在行为层识别矛盾点并补强证据方向。
+            三层交叉后，任何单一抗辩都会被其他层的数据击穿——这就是"嫌疑人画像"的核心方法。
+        </div>
+        <div class="links">
+            <a href="https://kns.cnki.net/kcms2/article/abstract?（此处替换为你的知网链接）" target="_blank">🔗 知网全文</a>
+            <a href="#" onclick="alert('请从知网下载或联系作者获取')">📥 下载引用</a>
+        </div>
+        <div style="margin-top: 10px; font-size: 13px; color: #666; background: #f0f2f5; padding: 8px 12px; border-radius: 6px;">
+            <strong>引用格式：</strong>陈芳琳. 基于三层模型构建嫌疑人画像——电子数据取证中的操作层—身份层—行为层交叉分析[J]. 公安信息化应用, 2025.
+        </div>
+    </div>
+
+    <!-- ===== 学员论文（未发表） ===== -->
+    <div class="paper">
+        <h3>基于时间序列分析的手机取证数据关联方法研究</h3>
+        <div class="meta">李小明（2021级刑事技术） · 课程优秀论文 · 2024年</div>
+        <div class="abstract">
+            <strong>摘要：</strong>本文针对手机取证中多源数据的时间关联问题，提出了一种基于时间序列对齐的自动关联方法。
+            通过提取短信、通话、位置、应用日志中的时间戳信息，构建统一的时间轴，实现了跨应用、跨类型数据的自动关联与可视化展示。
+            实验表明，该方法能有效提高取证分析效率。
+        </div>
+        <div class="links">
+            <a href="#" onclick="alert('请联系指导老师获取电子版')">📄 阅读全文（内部资料）</a>
+        </div>
+    </div>
+
+    <!-- ===== 返回链接 ===== -->
+    <a class="back" href="https://fanglinc.github.io/police-information-platform/">← 返回教学平台</a>
+</body>
+</html>
