@@ -13,3 +13,11 @@ https://fanglinc.github.io/police-information-platform/
 ## 文件结构
 - `index.html` — 教学平台主文件
 - `papers/` — 论文合集目录
+
+
+police-information-platform/
+│
+├── index.html          ← 教学平台（学生访问的主要页面）
+├── papers.html         ← 论文展示页面（从教学平台点击跳转过来）
+├── (其他文件，如 PDF、图片等)
+└── README.md
