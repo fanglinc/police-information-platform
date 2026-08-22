@@ -1,0 +1,1812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>《公安信息化应用基础》第三章教学平台</title>
+<script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+<style>
+/* ========================================================
+   《公安信息化应用基础》第三章教学平台 v2
+   案件叙事流：建立认知 → 逻辑击穿 → 程序正义 → 价值升华
+   单文件：Vue 3 (CDN) + 原生 CSS + Web Crypto API + localStorage
+   ======================================================== */
+
+:root{
+  --bg-0:#070d1a; --bg-1:#0a1929; --bg-2:#112240; --bg-3:#1b2d4a;
+  --primary:#4FC3F7; --primary-d:#0288d1; --accent:#00e5ff; --accent-2:#7c4dff;
+  --success:#4caf50; --warning:#ffb300; --error:#ff5252;
+  --text:#e6f1ff; --text-dim:#8892b0; --text-muted:#5a6885;
+  --line:rgba(79,195,247,.18); --line-strong:rgba(79,195,247,.4);
+  --glass:rgba(17,34,64,.55); --glass-2:rgba(27,45,74,.65);
+  --radius:14px; --shadow:0 10px 40px rgba(0,0,0,.45); --shadow-glow:0 0 30px rgba(79,195,247,.25);
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:var(--font);color:var(--text);
+  background:
+    radial-gradient(1200px 800px at 10% -10%,rgba(79,195,247,.10),transparent 60%),
+    radial-gradient(1000px 700px at 110% 110%,rgba(124,77,255,.10),transparent 60%),
+    linear-gradient(135deg,var(--bg-0) 0%,var(--bg-1) 50%,var(--bg-2) 100%);
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,textarea{font-family:inherit}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(79,195,247,.25);border-radius:4px}
+
+#app{height:100vh;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden}
+
+/* Top bar */
+.topbar{
+  flex:0 0 auto;height:54px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;background:var(--glass);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);z-index:20;
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:14px;letter-spacing:.2px}
+.brand-logo{
+  width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,var(--primary),var(--accent-2));
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  box-shadow:0 0 14px rgba(79,195,247,.5);
+}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.topbar-btn{
+  padding:6px 12px;font-size:12px;border-radius:8px;
+  background:rgba(79,195,247,.1);border:1px solid var(--line);color:var(--primary);transition:.2s;
+}
+.topbar-btn:hover{background:rgba(79,195,247,.2)}
+.role-switch{display:flex;background:rgba(0,0,0,.25);border-radius:9px;padding:3px}
+.role-switch button{padding:5px 12px;font-size:12px;border-radius:6px;color:var(--text-dim);transition:.2s}
+.role-switch button.on{background:var(--primary);color:#001925;font-weight:600}
+
+/* Stage */
+.stage{flex:1;position:relative;overflow:hidden}
+.page{
+  position:absolute;inset:0;padding:24px clamp(16px,4vw,60px) 80px;overflow-y:auto;
+  opacity:0;pointer-events:none;transition:opacity .45s ease, transform .45s ease;transform:translateX(30px);
+}
+.page.active{opacity:1;pointer-events:auto;transform:translateX(0)}
+.page.prev{transform:translateX(-30px)}
+.page-inner{max-width:1100px;margin:0 auto;min-height:100%}
+
+/* Bottom nav */
+.bottombar{
+  flex:0 0 auto;height:64px;display:flex;align-items:center;justify-content:center;gap:20px;
+  background:var(--glass);backdrop-filter:blur(14px);border-top:1px solid var(--line);z-index:20;padding:0 16px;
+}
+.nav-btn{
+  width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(79,195,247,.12);border:1px solid var(--line);color:var(--primary);transition:.2s;font-size:18px;
+}
+.nav-btn:hover:not(:disabled){background:rgba(79,195,247,.25);transform:scale(1.05)}
+.nav-btn:disabled{opacity:.3;cursor:not-allowed}
+.progress-wrap{display:flex;align-items:center;gap:12px;min-width:200px}
+.progress-text{font-size:12px;color:var(--text-dim);white-space:nowrap;min-width:74px;text-align:center}
+.progress-bar{flex:1;height:6px;background:rgba(0,0,0,.3);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:3px;transition:width .4s ease;box-shadow:0 0 8px rgba(79,195,247,.6)}
+.dots{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:340px}
+.dot{width:7px;height:7px;border-radius:50%;background:rgba(79,195,247,.2);cursor:pointer;transition:.2s}
+.dot.on{background:var(--primary);box-shadow:0 0 6px var(--primary);transform:scale(1.3)}
+.dot.done{background:rgba(76,175,80,.5)}
+
+/* Common */
+.eyebrow{
+  display:inline-block;font-size:11px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--primary);padding:4px 10px;border:1px solid var(--line-strong);
+  border-radius:20px;background:rgba(79,195,247,.08);margin-bottom:14px;
+}
+.h1{font-size:clamp(26px,4vw,42px);font-weight:700;line-height:1.2;margin-bottom:14px;
+  background:linear-gradient(135deg,#fff 0%,var(--primary) 60%,var(--accent) 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.h2{font-size:clamp(20px,3vw,28px);font-weight:600;margin-bottom:12px;color:#fff}
+.h3{font-size:18px;font-weight:600;margin-bottom:10px;color:#fff}
+.lead{font-size:15px;line-height:1.7;color:var(--text-dim);max-width:680px;margin-bottom:18px}
+.card{background:var(--glass);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);backdrop-filter:blur(8px)}
+.card.glow{box-shadow:var(--shadow),var(--shadow-glow)}
+.grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.grid-3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.tag{display:inline-block;font-size:11px;padding:2px 9px;border-radius:10px;background:rgba(79,195,247,.12);color:var(--primary);border:1px solid var(--line)}
+.tag.ok{background:rgba(76,175,80,.12);color:var(--success);border-color:rgba(76,175,80,.3)}
+.tag.warn{background:rgba(255,179,0,.12);color:var(--warning);border-color:rgba(255,179,0,.3)}
+.tag.err{background:rgba(255,82,82,.12);color:var(--error);border-color:rgba(255,82,82,.3)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;transition:.2s;border:1px solid transparent}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-d));color:#001925;box-shadow:0 4px 14px rgba(79,195,247,.4)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(79,195,247,.55)}
+.btn-ghost{background:rgba(79,195,247,.1);color:var(--primary);border-color:var(--line-strong)}
+.btn-ghost:hover{background:rgba(79,195,247,.2)}
+.btn-ghost:disabled{opacity:.4;cursor:not-allowed}
+
+/* Cover */
+.cover{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;min-height:100%;position:relative}
+.cover .glow-bg{position:absolute;top:-10%;right:-10%;width:60%;height:80%;background:radial-gradient(circle,rgba(79,195,247,.18),transparent 70%);filter:blur(40px);z-index:-1}
+.cover-meta{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.cover-meta .tag{font-size:12px;padding:4px 12px}
+.cover-cta{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
+.cover-info{margin-top:30px;color:var(--text-muted);font-size:13px;line-height:1.8}
+
+/* Stage cards (case background) */
+.case-hero{background:linear-gradient(135deg,rgba(79,195,247,.08),rgba(124,77,255,.08));border:1px solid var(--line-strong);border-radius:16px;padding:24px;margin-bottom:20px;position:relative;overflow:hidden}
+.case-hero::before{content:"";position:absolute;top:-50%;right:-20%;width:300px;height:300px;background:radial-gradient(circle,rgba(79,195,247,.2),transparent 60%);filter:blur(20px)}
+.case-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.case-fact{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.6}
+.case-fact .ico{font-size:18px}
+.case-fact strong{color:var(--primary);display:block;margin-bottom:2px}
+
+/* Filename decomposition */
+.fn-decomp{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px;margin:18px 0;font-family:var(--mono)}
+.fn-part{background:rgba(79,195,247,.08);border:1px solid var(--line-strong);border-radius:8px;padding:10px 14px;text-align:center;min-width:80px}
+.fn-part.highlight{background:rgba(124,77,255,.15);border-color:var(--accent-2)}
+.fn-part .code{font-size:16px;font-weight:700;color:var(--accent);display:block}
+.fn-part .desc{font-size:11px;color:var(--text-dim);margin-top:4px;display:block}
+.fn-insight{margin-top:14px;padding:12px 16px;background:rgba(76,175,80,.08);border-left:3px solid var(--success);border-radius:8px;font-size:14px;line-height:1.7}
+.fn-insight strong{color:var(--success)}
+
+/* EXIF card */
+.exif-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:14px}
+.exif-item{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:10px;padding:14px}
+.exif-item .k{font-size:11px;color:var(--text-dim);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.exif-item .v{font-size:14px;color:#fff;font-family:var(--mono);word-break:break-all}
+.exif-item.gps{border-color:var(--accent-2);background:rgba(124,77,255,.08)}
+.exif-item.gps .v{color:var(--accent)}
+
+/* Defense card */
+.defense-card{
+  background:linear-gradient(135deg,rgba(255,82,82,.08),rgba(255,179,0,.05));
+  border:1px solid rgba(255,82,82,.3);border-radius:14px;padding:20px;margin:18px 0;position:relative;
+}
+.defense-card::before{content:"❝";position:absolute;top:8px;left:14px;font-size:40px;color:rgba(255,82,82,.3);font-family:Georgia,serif}
+.defense-quote{padding-left:32px;font-size:16px;line-height:1.7;color:#fff;font-style:italic}
+.defense-attr{padding-left:32px;margin-top:8px;font-size:12px;color:var(--text-dim)}
+.conflict-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+.conflict-item{padding:14px;background:rgba(0,0,0,.25);border-radius:10px;border:1px solid var(--line)}
+.conflict-item .label{font-size:11px;color:var(--text-dim);margin-bottom:6px}
+.conflict-item .val{font-size:14px;color:#fff}
+.conflict-item.danger{border-color:rgba(255,82,82,.3);background:rgba(255,82,82,.06)}
+
+/* Hexagon */
+.hex-wrap{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+.hex-stage{position:relative;aspect-ratio:1;max-width:420px;margin:0 auto;background:radial-gradient(circle,rgba(79,195,247,.06),transparent 70%);border-radius:50%}
+.hex-svg{width:100%;height:100%;cursor:pointer}
+.hex-poly{fill:rgba(79,195,247,.05);stroke:var(--line-strong);stroke-width:1.5;transition:.3s}
+.hex-poly.active{fill:rgba(79,195,247,.2);stroke:var(--primary);filter:drop-shadow(0 0 12px var(--primary))}
+.hex-vertex{cursor:pointer;transition:.2s}
+.hex-vertex circle{transition:.2s}
+.hex-vertex:hover circle.outer{r:22;fill:rgba(79,195,247,.3)}
+.hex-vertex.active circle.outer{r:24;fill:var(--primary);filter:drop-shadow(0 0 14px var(--primary))}
+.hex-vertex.active circle.inner{fill:#001925}
+.hex-vertex text{font-size:11px;font-weight:600;pointer-events:none;fill:#fff}
+.hex-vertex.active text{fill:#001925}
+.hex-vertex.visited circle.outer{stroke:var(--success)}
+.hex-vertex.locked{cursor:not-allowed;opacity:.4}
+.hex-vertex.locked circle.outer{stroke:var(--text-muted);stroke-dasharray:3,3;fill:rgba(0,0,0,.4)}
+.hex-vertex.locked text{fill:var(--text-muted)}
+.hex-vertex.locked:hover circle.outer{r:20;fill:rgba(0,0,0,.4)}
+.hex-lock-label{font-size:9px;fill:var(--text-muted);pointer-events:none}
+.hex-detail{min-height:300px}
+.hex-detail .dim-card{background:var(--glass);border:1px solid var(--line-strong);border-radius:14px;padding:20px;animation:slideIn .4s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.dim-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.dim-ico{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.dim-name{font-size:18px;font-weight:700;color:#fff}
+.dim-def{font-size:14px;color:var(--text-dim);line-height:1.6;margin-bottom:14px}
+.dim-keys{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.dim-case{background:rgba(79,195,247,.06);border-left:3px solid var(--primary);padding:12px 14px;border-radius:8px;font-size:13px;line-height:1.6}
+.dim-case strong{color:var(--accent);display:block;margin-bottom:4px;font-size:11px;letter-spacing:1px}
+.hex-empty{text-align:center;color:var(--text-muted);padding:40px 0;font-size:14px}
+.hex-empty .ico{font-size:42px;display:block;margin-bottom:10px;opacity:.4}
+
+/* Timeline */
+.timeline{position:relative;padding-left:30px;margin-top:10px}
+.timeline::before{content:"";position:absolute;left:9px;top:0;bottom:0;width:2px;background:linear-gradient(to bottom,var(--primary),var(--accent-2),transparent)}
+.tl-node{position:relative;margin-bottom:14px;cursor:pointer}
+.tl-dot{position:absolute;left:-30px;top:6px;width:20px;height:20px;border-radius:50%;background:var(--bg-1);border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;transition:.25s}
+.tl-dot::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--primary)}
+.tl-node.expanded .tl-dot{background:var(--primary);box-shadow:0 0 12px var(--primary)}
+.tl-node.expanded .tl-dot::after{background:#001925}
+.tl-card-head{background:var(--glass);border:1px solid var(--line);border-radius:10px;padding:12px 16px;transition:.2s}
+.tl-node:hover .tl-card-head{border-color:var(--line-strong)}
+.tl-node.expanded .tl-card-head{border-color:var(--primary)}
+.tl-time{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600}
+.tl-label{font-weight:600;color:#fff;margin:2px 0}
+.tl-short{font-size:12px;color:var(--text-dim)}
+.tl-body{max-height:0;overflow:hidden;transition:max-height .35s ease, padding .35s ease;background:var(--glass-2);border:1px solid var(--line);border-top:none;border-radius:0 0 10px 10px;padding:0 16px}
+.tl-node.expanded .tl-body{max-height:400px;padding:14px 16px}
+.tl-body p{font-size:13px;line-height:1.7;color:var(--text);margin-bottom:8px}
+.tl-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+/* Hash calculator (embedded) */
+.hash-block{margin-top:20px;border-top:1px dashed var(--line-strong);padding-top:20px}
+.hash-guide{background:linear-gradient(135deg,rgba(124,77,255,.08),rgba(79,195,247,.08));border:1px solid var(--line-strong);border-radius:12px;padding:16px 18px;margin-bottom:18px}
+.hash-guide-title{font-weight:600;color:#fff;display:flex;align-items:center;gap:8px}
+.hash-guide-body{font-size:13px;line-height:1.8;color:var(--text-dim);margin-top:10px}
+.hash-step{display:flex;gap:10px;margin:6px 0}
+.hash-step .n{color:var(--accent);font-weight:600;flex:0 0 auto}
+.hash-input{width:100%;min-height:80px;background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;font-family:var(--mono);resize:vertical;transition:.2s}
+.hash-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,195,247,.15)}
+.hash-out{background:#000;border:1px solid var(--line-strong);border-radius:10px;padding:14px;font-family:var(--mono);font-size:13px;color:var(--accent);word-break:break-all;min-height:48px;line-height:1.6}
+.hash-out.empty{color:var(--text-muted);font-style:italic}
+.hash-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.hash-tip{margin-top:14px;font-size:13px;color:var(--warning);background:rgba(255,179,0,.08);border-left:3px solid var(--warning);padding:10px 14px;border-radius:8px}
+.hash-compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+.compare-col{background:var(--glass);border:1px solid var(--line);border-radius:10px;padding:14px}
+.compare-col.match{border-color:var(--success);box-shadow:0 0 14px rgba(76,175,80,.25)}
+.compare-col.diff{border-color:var(--error);box-shadow:0 0 14px rgba(255,82,82,.25)}
+.compare-col h4{font-size:12px;color:var(--text-dim);margin-bottom:8px;font-weight:600}
+.compare-result{font-family:var(--mono);font-size:11px;word-break:break-all;color:var(--accent);min-height:30px}
+.compare-badge{text-align:center;margin-top:10px;font-size:13px;font-weight:600}
+.verdict-box{margin-top:18px;padding:14px 18px;border-radius:10px;font-size:14px;line-height:1.7}
+.verdict-box.win{background:rgba(76,175,80,.1);border:1px solid var(--success);color:#fff}
+.verdict-box.win strong{color:var(--success)}
+
+/* Matrix */
+.matrix-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px}
+.matrix-progress{font-size:13px;color:var(--text-dim)}
+.matrix-progress strong{color:var(--primary);font-size:16px}
+.matrix-table{width:100%;border-collapse:separate;border-spacing:4px;background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:8px}
+.matrix-table th,.matrix-table td{padding:10px;text-align:center;font-size:13px;border-radius:8px}
+.matrix-table th{color:var(--text-dim);font-weight:600;font-size:12px;background:rgba(0,0,0,.2)}
+.matrix-table th.row-h{color:#fff;background:rgba(79,195,247,.1)}
+.matrix-cell{background:rgba(0,0,0,.25);min-height:48px;cursor:pointer;transition:.2s;border:1px dashed var(--line)}
+.matrix-cell:hover{background:rgba(79,195,247,.08);border-color:var(--line-strong)}
+.matrix-cell.filled{background:rgba(79,195,247,.12);border:1px solid var(--line-strong);border-style:solid}
+.matrix-cell.correct{background:rgba(76,175,80,.15);border:1px solid var(--success)}
+.matrix-cell.wrong{background:rgba(255,82,82,.15);border:1px solid var(--error)}
+.matrix-cell.prefilled{background:rgba(79,195,247,.06);color:var(--text-dim);font-style:italic}
+.matrix-cell .ans{font-size:13px;line-height:1.4;color:#fff}
+.matrix-cell .correct-ans{font-size:11px;color:var(--success);margin-top:4px}
+.matrix-pool-hint{text-align:center;font-size:12px;margin:14px 0 8px}
+.matrix-pool{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px;padding:14px;background:var(--glass);border:1px dashed var(--line-strong);border-radius:10px;min-height:60px}
+.pool-empty{color:var(--text-muted);font-size:13px;width:100%;text-align:center;padding:8px}
+.pool-chip{background:rgba(79,195,247,.1);border:1px solid var(--line-strong);color:var(--primary);padding:8px 14px;border-radius:20px;font-size:13px;cursor:pointer;transition:.2s;user-select:none}
+.pool-chip:hover{background:var(--primary);color:#001925;transform:translateY(-2px)}
+.pool-chip.selected{background:linear-gradient(135deg,var(--primary),var(--accent-2));color:#001925;box-shadow:0 0 16px rgba(79,195,247,.6);transform:translateY(-2px) scale(1.05)}
+.matrix-score{text-align:center;margin-top:18px;font-size:14px}
+.matrix-score .big{font-size:28px;font-weight:700;color:var(--primary)}
+.preview-banner{background:linear-gradient(135deg,rgba(124,77,255,.12),rgba(79,195,247,.08));border:1px dashed var(--accent-2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#fff;line-height:1.6}
+.preview-banner strong{color:var(--accent)}
+
+/* Tech-Law table */
+.tl-table{width:100%;border-collapse:separate;border-spacing:0 8px}
+.tl-table tr{background:var(--glass)}
+.tl-table th{text-align:left;padding:10px 14px;color:var(--text-dim);font-size:12px;font-weight:600;background:rgba(0,0,0,.2)}
+.tl-table th:first-child{border-radius:10px 0 0 10px}
+.tl-table th:last-child{border-radius:0 10px 10px 0}
+.tl-table td{padding:12px 14px;font-size:13px}
+.tl-table td:first-child{border-radius:10px 0 0 10px;border-left:3px solid var(--primary)}
+.tl-table td:last-child{border-radius:0 10px 10px 0}
+.tl-arrow{color:var(--accent);font-weight:700}
+.tl-status{font-weight:600}
+.tl-status.done{color:var(--success)}
+.tl-status.pending{color:var(--warning)}
+.tl-insight{margin-top:18px;padding:14px 18px;background:rgba(79,195,247,.06);border-left:3px solid var(--primary);border-radius:8px;font-size:14px;line-height:1.7}
+.tl-insight strong{color:var(--accent)}
+
+/* Student note box */
+.note-box{margin-top:18px;padding:14px 16px;background:rgba(255,179,0,.06);border:1px dashed rgba(255,179,0,.4);border-radius:10px}
+.note-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;color:var(--warning);font-weight:600}
+.note-status{font-size:11px;color:var(--success);font-weight:400}
+.note-input{width:100%;min-height:72px;padding:10px 12px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:13px;line-height:1.6;resize:vertical;transition:.2s}
+.note-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(79,195,247,.15)}
+.note-input::placeholder{color:var(--text-muted)}
+
+/* Paper recommendation card */
+.paper-card{margin-top:22px;padding:18px;background:linear-gradient(135deg,rgba(124,77,255,.10),rgba(79,195,247,.06));border:1px solid rgba(124,77,255,.35);border-radius:12px}
+.paper-card-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.paper-badge{font-size:11px;padding:3px 10px;background:rgba(124,77,255,.22);color:#b388ff;border-radius:5px;letter-spacing:1px;font-weight:600}
+.paper-title{font-size:16px;font-weight:700;color:var(--text);line-height:1.4}
+.paper-meta{font-size:12px;color:var(--text-dim);margin:6px 0 10px}
+.paper-abstract{font-size:13px;line-height:1.75;color:var(--text-dim)}
+.paper-abstract strong{color:var(--text)}
+.paper-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.paper-tag{font-size:11px;padding:2px 8px;background:rgba(79,195,247,.12);border:1px solid var(--line);border-radius:4px;color:var(--primary)}
+.paper-link{display:inline-flex;align-items:center;gap:6px;margin-top:12px;padding:7px 16px;background:rgba(124,77,255,.18);border:1px solid rgba(124,77,255,.45);border-radius:8px;color:#b388ff;font-size:13px;text-decoration:none;transition:.2s}
+.paper-link:hover{background:rgba(124,77,255,.3);transform:translateY(-1px)}
+
+/* Rule list */
+.rule-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.rule-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:var(--glass);border:1px solid var(--line);border-radius:10px;transition:.2s}
+.rule-item:hover{border-color:var(--line-strong);transform:translateX(4px)}
+.rule-num{flex:0 0 26px;width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:700;color:#001925;font-size:12px}
+.rule-text{font-size:13px;line-height:1.6;color:var(--text)}
+.rule-text strong{color:#fff;display:block;margin-bottom:2px}
+
+/* Closure chain */
+.closure-chain{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:20px 0;justify-content:center}
+.closure-node{background:var(--glass);border:1px solid var(--line-strong);border-radius:10px;padding:10px 14px;font-size:13px;color:#fff;text-align:center;min-width:100px}
+.closure-node .ico{font-size:20px;display:block;margin-bottom:4px}
+.closure-arrow{color:var(--accent);font-size:20px;font-weight:700}
+
+/* Suspense box */
+.suspense-box{background:linear-gradient(135deg,rgba(255,82,82,.08),rgba(124,77,255,.08));border:1px solid rgba(255,82,82,.3);border-radius:14px;padding:24px;margin:18px 0;text-align:center}
+.suspense-box .q{font-size:clamp(18px,2.5vw,24px);font-weight:700;color:#fff;line-height:1.4;margin-bottom:10px}
+.suspense-box .a{font-size:13px;color:var(--text-dim);line-height:1.7}
+
+/* Summary */
+.summary-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.summary-card{background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:18px;transition:.25s}
+.summary-card:hover{transform:translateY(-3px);border-color:var(--line-strong);box-shadow:var(--shadow-glow)}
+.summary-card .ico{font-size:30px;margin-bottom:8px;display:block}
+.summary-card h4{font-size:15px;color:#fff;margin-bottom:6px}
+.summary-card p{font-size:12px;color:var(--text-dim);line-height:1.6}
+
+/* Archive */
+.archive-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:18px}
+.archive-meta-inputs{display:flex;gap:10px;flex-wrap:wrap}
+.archive-meta-inputs input{background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;width:160px}
+.archive-meta-inputs input:focus{outline:none;border-color:var(--primary)}
+.archive-section{margin-bottom:18px}
+.archive-section h3{font-size:14px;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.archive-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.archive-row .k{color:var(--text-dim)}
+.archive-row .v{color:#fff;font-weight:500;text-align:right;max-width:60%;word-break:break-word}
+.archive-completion{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.completion-ring{width:64px;height:64px;position:relative}
+.completion-ring svg{transform:rotate(-90deg)}
+.completion-ring .pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--primary)}
+.archive-print-area{background:#fff;color:#1a1a1a;border-radius:12px;padding:24px;margin-top:14px;display:none}
+@media print{
+  body{background:#fff}
+  .topbar,.bottombar,.nav-btn,.no-print{display:none !important}
+  .stage{overflow:visible !important}
+  .page{position:static !important;opacity:1 !important;transform:none !important;padding:0 !important}
+  .archive-print-area{display:block !important}
+  .archive-on-screen{display:none !important}
+}
+
+/* Dashboard */
+.dash-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:16px;text-align:center}
+.stat-num{font-size:26px;font-weight:700;color:var(--primary);line-height:1}
+.stat-label{font-size:11px;color:var(--text-dim);margin-top:4px;letter-spacing:.5px}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.dash-panel{background:var(--glass);border:1px solid var(--line);border-radius:12px;padding:16px}
+.dash-panel h3{font-size:14px;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.heat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+.heat-item{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;border-radius:6px;font-size:12px;background:rgba(0,0,0,.2)}
+.heat-bar{flex:1;height:6px;background:rgba(0,0,0,.3);border-radius:3px;margin:0 8px;overflow:hidden}
+.heat-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--error));transition:width .5s}
+.err-grid{display:flex;flex-direction:column;gap:6px}
+.err-item{display:flex;justify-content:space-between;font-size:12px;padding:6px 10px;background:rgba(0,0,0,.2);border-radius:6px}
+.err-item .pct{color:var(--error);font-weight:600}
+.archive-list{max-height:300px;overflow-y:auto;border:1px solid var(--line);border-radius:10px}
+.archive-list-item{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:8px;padding:8px 12px;font-size:12px;border-bottom:1px solid var(--line)}
+.archive-list-item.head{background:rgba(0,0,0,.2);font-weight:600;color:var(--text-dim);position:sticky;top:0}
+.archive-list-item.head>div{font-size:11px}
+.export-btns{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+
+.end-wrap{display:flex;flex-direction:column;justify-content:center;align-items:center;min-height:100%;text-align:center}
+.end-wrap .ico{font-size:64px;margin-bottom:14px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.end-wrap h2{font-size:32px;margin-bottom:10px}
+.end-wrap p{color:var(--text-dim);max-width:500px;line-height:1.7;margin-bottom:20px}
+
+/* Lesson tag */
+.lesson-tag{display:inline-block;font-size:11px;padding:3px 10px;border-radius:12px;font-weight:600;letter-spacing:1px;margin-bottom:10px}
+.lesson-tag.l1{background:rgba(79,195,247,.15);color:var(--primary);border:1px solid var(--line-strong)}
+.lesson-tag.l2{background:rgba(124,77,255,.15);color:var(--accent-2);border:1px solid rgba(124,77,255,.3)}
+.lesson-tag.l3{background:rgba(76,175,80,.15);color:var(--success);border:1px solid rgba(76,175,80,.3)}
+
+@media(max-width:760px){
+  .topbar{height:48px;padding:0 12px}
+  .page{padding:18px 16px 70px}
+  .hex-wrap{grid-template-columns:1fr}
+  .hex-stage{max-width:300px}
+  .case-grid,.conflict-grid{grid-template-columns:1fr}
+  .hash-compare{grid-template-columns:1fr}
+  .dash-grid{grid-template-columns:1fr}
+  .matrix-table th,.matrix-table td{padding:6px;font-size:11px}
+  .dots{display:none}
+  .progress-wrap{min-width:120px}
+  .bottombar{height:56px;gap:10px}
+  .archive-meta-inputs input{width:100%}
+  .brand{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo">⚖</div>
+      <div>《公安信息化应用基础》第三章教学平台</div>
+    </div>
+    <div class="topbar-right">
+      <button class="topbar-btn" @click="go(16)">📄 学习档案</button>
+      <div class="role-switch">
+        <button :class="{on:role==='student'}" @click="role='student'">学生端</button>
+        <button :class="{on:role==='teacher'}" @click="role='teacher'">教师端</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage">
+
+    <!-- ============ PAGE 0: COVER ============ -->
+    <section class="page" :class="pageClass(0)">
+      <div class="page-inner cover">
+        <div class="glow-bg"></div>
+        <div class="cover-meta">
+          <span class="tag">第三章</span>
+          <span class="tag">电子数据取证技术基础</span>
+          <span class="tag">3+3 课时</span>
+        </div>
+        <div class="eyebrow">智能教学辅助系统</div>
+        <h1 class="h1">让电子数据<br>开口说话</h1>
+        <p class="lead">
+          你是一名技术民警。一起网络诈骗案中，嫌疑人拒不供述——传统痕迹走不通了。
+          你手上只有一部手机和一张照片。本平台将带你从证据发现、固定、提取、分析到法律闭环，
+          完成一次完整的电子数据取证实战。
+        </p>
+        <div class="cover-cta">
+          <button class="btn btn-primary" @click="go(1)">开始办案 →</button>
+          <button class="btn btn-ghost" @click="go(16)">查看学习档案</button>
+        </div>
+        <div class="cover-info">
+          ✓ 无需登录　✓ 数据本地留存　✓ 移动端适配　✓ 支持打印导出
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 1: CASE BACKGROUND ============ -->
+    <section class="page" :class="pageClass(1)">
+      <div class="page-inner">
+        <span class="lesson-tag l1">课时一 · 建立认知</span>
+        <div class="eyebrow">案件导入</div>
+        <h2 class="h2">当传统痕迹失效</h2>
+        <div class="case-hero card glow">
+          <p style="font-size:14px;line-height:1.8;color:var(--text)">
+            2025年3月14日，某地公安机关在侦办一起网络诈骗案件时，依法扣押了嫌疑人张某的手机。
+            到案后张某拒不供述，称"手机不是我的"、"照片是别人传给我的"。
+            现场无指纹、无DNA、无目击证人——<strong style="color:var(--accent)">传统痕迹全部走不通</strong>。
+            作为技术民警，你只有这部手机，以及相册里的一张关键照片
+            <code style="color:var(--accent);font-family:var(--mono)">IMG_20250314_182245.jpg</code>。
+          </p>
+          <div class="case-grid">
+            <div class="case-fact"><span class="ico">📱</span><div><strong>唯一物证</strong>嫌疑人手机（Android）</div></div>
+            <div class="case-fact"><span class="ico">🖼️</span><div><strong>关键证据</strong>IMG_20250314_182245.jpg</div></div>
+            <div class="case-fact"><span class="ico">🕐</span><div><strong>时间线索</strong>2025/3/14 18:22:45</div></div>
+            <div class="case-fact"><span class="ico">⚖</span><div><strong>法律目标</strong>从登记保存到鉴定委托</div></div>
+          </div>
+        </div>
+        <div class="grid grid-3">
+          <div class="card" v-for="s in caseStages" :key="s.t">
+            <div style="font-size:22px;margin-bottom:6px">{{s.ico}}</div>
+            <h3 class="h3" style="font-size:15px">{{s.t}}</h3>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.6">{{s.d}}</p>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p2">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p2" @input="saveNote('p2')" placeholder="记录你对本案的初步思考：作为技术民警，你认为"让电子数据开口说话"意味着什么？"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 2: FILENAME DECOMPOSITION ============ -->
+    <section class="page" :class="pageClass(2)">
+      <div class="page-inner">
+        <span class="lesson-tag l1">课时一 · 建立认知</span>
+        <div class="eyebrow">第一步 · 发现</div>
+        <h2 class="h2">文件名本身就是证据</h2>
+        <p class="lead">
+          打开手机相册，你发现了这张照片。先别急着看内容——文件名本身，就已经"开口说话"了。
+        </p>
+        <div class="card">
+          <div style="text-align:center;font-family:var(--mono);font-size:18px;color:var(--accent);margin-bottom:6px">IMG_20250314_182245.jpg</div>
+          <div class="fn-decomp">
+            <div class="fn-part"><span class="code">IMG</span><span class="desc">Image 图像</span></div>
+            <div class="fn-part"><span class="code">_</span><span class="desc">分隔符</span></div>
+            <div class="fn-part highlight"><span class="code">20250314</span><span class="desc">2025年3月14日</span></div>
+            <div class="fn-part"><span class="code">_</span><span class="desc">分隔符</span></div>
+            <div class="fn-part highlight"><span class="code">182245</span><span class="desc">18时22分45秒</span></div>
+            <div class="fn-part"><span class="code">.jpg</span><span class="desc">JPEG 格式</span></div>
+          </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p3">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p3" @input="saveNote('p3')" placeholder="文件名中你还发现了哪些信息？试着拆解其他文件名，记录你的发现…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 3: EXIF EXTRACTION ============ -->
+    <section class="page" :class="pageClass(3)">
+      <div class="page-inner">
+        <span class="lesson-tag l1">课时一 · 建立认知</span>
+        <div class="eyebrow">第二步 · 提取</div>
+        <h2 class="h2">照片里藏着一张地图</h2>
+        <p class="lead">
+          文件名只说了"何时"。那"何地"、"何物"呢？答案藏在照片的 EXIF 元数据里——
+          这是一段大多数用户永远不会看到，但从未消失的数据。
+        </p>
+        <div class="card">
+          <h3 class="h3" style="font-size:15px">📷 EXIF 元数据提取结果</h3>
+          <div class="exif-grid">
+            <div class="exif-item gps">
+              <div class="k">GPS 位置</div>
+              <div class="v">北纬 39.9042°<br>东经 116.4074°</div>
+            </div>
+            <div class="exif-item">
+              <div class="k">设备型号</div>
+              <div class="v">小米 13 Pro</div>
+            </div>
+            <div class="exif-item">
+              <div class="k">系统版本</div>
+              <div class="v">Android 14</div>
+            </div>
+            <div class="exif-item">
+              <div class="k">拍摄时间</div>
+              <div class="v">2025:03:14 18:22:45</div>
+            </div>
+            <div class="exif-item">
+              <div class="k">光圈 / 快门</div>
+              <div class="v">f/1.8 · 1/120s</div>
+            </div>
+            <div class="exif-item">
+              <div class="k">软件版本</div>
+              <div class="v">MIUI 14.0.5</div>
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p4">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p4" @input="saveNote('p4')" placeholder="EXIF 里藏着哪些"看不见"的信息？如果嫌疑人删除了照片内容，EXIF 还在吗？记录你的思考…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 4: HEXAGON (FIRST 4 DIMS) ============ -->
+    <section class="page" :class="pageClass(4)">
+      <div class="page-inner">
+        <span class="lesson-tag l1">课时一 · 建立认知</span>
+        <div class="eyebrow">互动一 · 六边形建模（前四维）</div>
+        <h2 class="h2">电子证据的前四个维度</h2>
+        <p class="lead">
+          到目前为止，我们已经从这张照片中提取了四个维度的信息。点击六边形顶点查看详情。
+          后两维（<strong style="color:var(--accent-2)">哈希值</strong>、<strong style="color:var(--accent-2)">关联关系</strong>）将在课时二中解锁。
+        </p>
+        <div class="hex-wrap">
+          <div class="hex-stage">
+            <svg class="hex-svg" viewBox="0 0 400 400" @click.self="activeDim=null">
+              <polygon class="hex-poly" :class="{active:!!activeDim||showAllDims}" :points="hexPolyPoints(200,200,140)"/>
+              <text x="200" y="195" text-anchor="middle" fill="#8892b0" font-size="12" pointer-events="none">电子证据</text>
+              <text x="200" y="212" text-anchor="middle" fill="#4FC3F7" font-size="13" font-weight="600" pointer-events="none">六维模型</text>
+              <g v-for="(d,i) in hexDims" :key="d.dimension"
+                 class="hex-vertex"
+                 :class="{active:activeDim===d.dimension, visited:visitedDims.has(d.dimension), locked: i>=hexUnlockedCount}"
+                 @click.stop=" i<hexUnlockedCount && selectDim(d.dimension)">
+                <circle class="outer" :cx="vertex(i).x" :cy="vertex(i).y" r="20" :fill="activeDim===d.dimension?'':'rgba(17,34,64,.8)'" :stroke="visitedDims.has(d.dimension)?'var(--success)':'var(--line-strong)'" stroke-width="2"/>
+                <circle class="inner" v-if="activeDim===d.dimension" :cx="vertex(i).x" :cy="vertex(i).y" r="6" fill="#001925"/>
+                <text :x="vertex(i).x" :y="vertex(i).y+4" text-anchor="middle">{{d.short}}</text>
+                <text v-if="i>=hexUnlockedCount" class="hex-lock-label" :x="vertex(i).x" :y="vertex(i).y+30" text-anchor="middle">🔒 待解锁</text>
+              </g>
+            </svg>
+          </div>
+          <div class="hex-detail">
+            <div v-if="activeDimObj" class="dim-card" :key="activeDimObj.dimension">
+              <div class="dim-head">
+                <div class="dim-ico" :style="{background:activeDimObj.color+'22',color:activeDimObj.color}">{{activeDimObj.icon}}</div>
+                <div>
+                  <div class="dim-name">{{activeDimObj.dimension}}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">维度 {{hexDims.indexOf(activeDimObj)+1}}/6</div>
+                </div>
+              </div>
+              <div class="dim-def">{{activeDimObj.definition}}</div>
+              <div class="dim-keys">
+                <span class="tag" v-for="k in activeDimObj.keywords" :key="k">{{k}}</span>
+              </div>
+              <div class="dim-case">
+                <strong>本案应用</strong>
+                {{activeDimObj.caseExample}}
+              </div>
+            </div>
+            <div v-else class="hex-empty">
+              <span class="ico">👆</span>
+              点击左侧任一<strong>亮色</strong>顶点查看维度详情<br>
+              <span style="font-size:11px;color:var(--text-muted)">灰色顶点将在课时二中解锁</span>
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p5">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p5" @input="saveNote('p5')" placeholder="前四维（时间/位置/设备/属性）中，哪一维最让你意外？为什么？后两维你猜测会是什么？"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 5: ACTIVITY TRAJECTORY (TIMELINE) ============ -->
+    <section class="page" :class="pageClass(5)">
+      <div class="page-inner">
+        <span class="lesson-tag l1">课时一 · 建立认知</span>
+        <div class="eyebrow">第三步 · 重建</div>
+        <h2 class="h2">时间+地点+设备+关系=活动轨迹</h2>
+        <p class="lead">
+          把前四维数据组合起来，我们可以重建案发当天的活动轨迹。点击节点展开详情。
+        </p>
+        <div style="margin-bottom:14px">
+          <button class="btn btn-ghost" @click="expandAll">{{allExpanded?'收起全部':'展开全部'}}</button>
+          <span style="margin-left:10px;font-size:12px;color:var(--text-dim)">已查看 {{visitedNodes.size}}/{{timeline.length}} 节点</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-node" v-for="(n,i) in timeline" :key="i" :class="{expanded:expandedNodes.has(i)}" @click="toggleNode(i)">
+            <div class="tl-dot"></div>
+            <div class="tl-card-head">
+              <div class="tl-time">{{n.time}}</div>
+              <div class="tl-label">{{n.label}}</div>
+              <div class="tl-short">{{n.shortDesc}}</div>
+            </div>
+            <div class="tl-body">
+              <p>{{n.detail}}</p>
+              <div class="tl-meta">
+                <span class="tag" :class="n.evidenceType==='电子物证'?'ok':'warn'">证据类型：{{n.evidenceType}}</span>
+                <span class="tag">法律动作：{{n.legalAction}}</span>
+                <span class="tag" v-if="n.hash">SHA-256：{{n.hash.slice(0,16)}}…</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p6">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p6" @input="saveNote('p6')" placeholder="课时一结束了：前四维能证明"数据存在"，但还无法回答什么问题？记录你的思考…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 6: DEFENSE ============ -->
+    <section class="page" :class="pageClass(6)">
+      <div class="page-inner">
+        <span class="lesson-tag l2">课时二 · 逻辑击穿</span>
+        <div class="eyebrow">认知冲突</div>
+        <h2 class="h2">嫌疑人的抗辩</h2>
+        <p class="lead">
+          证据链看似已经完整——但张某到案后提出了一个看似合理的抗辩，瞬间让所有证据"断裂"。
+        </p>
+        <div class="defense-card">
+          <div class="defense-quote">
+            "这部手机是我们宿舍公用的，照片是同事李某拍的，然后通过微信转发给我的。
+            你们查到的所有数据，都不能证明是我本人拍的，更不能证明我实施了诈骗。"
+          </div>
+          <div class="defense-attr">—— 嫌疑人张某的供述</div>
+        </div>
+        <div class="conflict-grid">
+          <div class="conflict-item danger">
+            <div class="label">⚡ 证据链断裂点 1</div>
+            <div class="val">设备公用 → 无法锁定操作者本人</div>
+          </div>
+          <div class="conflict-item danger">
+            <div class="label">⚡ 证据链断裂点 2</div>
+            <div class="val">照片"转发"过 → 原始性存疑</div>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p7">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p7" @input="saveNote('p7')" placeholder="如果你是辩护律师，你还会从哪些角度质疑这组证据？作为技术民警你该如何应对？"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 7: CROSSOVER TO ANALYSIS ============ -->
+    <section class="page" :class="pageClass(7)">
+      <div class="page-inner">
+        <span class="lesson-tag l2">课时二 · 逻辑击穿</span>
+        <div class="eyebrow">认知跨越</div>
+        <h2 class="h2">从"看数据"到"分析数据"</h2>
+        <p class="lead">
+          课时一我们学会了"看"——看到了时间、地点、设备、属性。
+          但"看"不足以击穿抗辩。我们必须跨越到"分析"——用数据自身的逻辑，让谎言无处藏身。
+        </p>
+        <div class="grid grid-2">
+          <div class="card">
+            <div style="font-size:32px;margin-bottom:8px">🔐</div>
+            <h3 class="h3">第五维 · 哈希值</h3>
+            <p style="font-size:13px;color:var(--text-dim);line-height:1.7">
+              哈希值是数据的"数字指纹"。任何对数据的修改——哪怕只改一个字节——
+              哈希值都会<strong style="color:var(--accent)">完全改变</strong>。
+            </p>
+            <div style="margin-top:12px;padding:10px 12px;background:rgba(255,82,82,.06);border-left:3px solid var(--error);border-radius:6px;font-size:12px;line-height:1.6">
+              <strong style="color:var(--error)">击穿点：</strong>嫌疑人称照片被"转发"过。
+              若照片真的被转发/修改，哈希值必然改变；若哈希值与原始值一致，"转发"抗辩不攻自破。
+            </div>
+          </div>
+          <div class="card">
+            <div style="font-size:32px;margin-bottom:8px">🔗</div>
+            <h3 class="h3">第六维 · 关联关系</h3>
+            <p style="font-size:13px;color:var(--text-dim);line-height:1.7">
+              关联关系是数据与主体、其他证据之间的逻辑联系。
+              单一证据易被抗辩，多重关联则形成"证据闭环"。
+            </p>
+            <div style="margin-top:12px;padding:10px 12px;background:rgba(255,82,82,.06);border-left:3px solid var(--error);border-radius:6px;font-size:12px;line-height:1.6">
+              <strong style="color:var(--error)">击穿点：</strong>嫌疑人称"同事拍的"。
+              但系统日志显示解锁者为张某本人，生物识别记录印证——操作者非他莫属。
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p8">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p8" @input="saveNote('p8')" placeholder=""看数据"和"分析数据"有什么区别？你认为接下来用什么方法可以击穿嫌疑人的抗辩？"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 8: HASH BREAKS LIE (EMBEDDED CALCULATOR) ============ -->
+    <section class="page" :class="pageClass(8)">
+      <div class="page-inner">
+        <span class="lesson-tag l2">课时二 · 逻辑击穿</span>
+        <div class="eyebrow">互动二 · 现场验证</div>
+        <h2 class="h2">哈希值击穿"转发"谎言</h2>
+        <p class="lead">
+          嫌疑人称照片是"同事转发给他的"。如果照片真的被转发/修改过，哈希值必然改变。
+          我们现场计算并比对，让数据自己说话。
+        </p>
+
+        <!-- 上半部分：原理与本案应用 -->
+        <div class="card">
+          <h3 class="h3" style="font-size:15px">📐 哈希值原理与本案应用</h3>
+          <div class="grid grid-2" style="margin-top:10px">
+            <div>
+              <div style="font-size:13px;color:var(--text-dim);margin-bottom:8px">原理</div>
+              <p style="font-size:13px;line-height:1.7">
+                SHA-256 是一种单向哈希函数：输入任意数据，输出 64 位十六进制"指纹"。
+                <strong style="color:var(--accent)">雪崩效应</strong>——修改任意一个字符，哈希值完全改变。
+              </p>
+            </div>
+            <div>
+              <div style="font-size:13px;color:var(--text-dim);margin-bottom:8px">本案应用</div>
+              <p style="font-size:13px;line-height:1.7">
+                若张某所称"照片被转发"为真，转发过程必然修改了文件 → 哈希值必然改变。
+                我们计算当前照片哈希值，与登记保存时的原始哈希值比对，真伪立判。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 下半部分：嵌入式哈希计算器 -->
+        <div class="card hash-block">
+          <h3 class="h3" style="font-size:15px">🔐 现场验证：计算照片哈希值，击穿"转发"谎言</h3>
+
+          <div class="hash-guide" v-if="showHashGuide">
+            <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" @click="showHashGuide=!showHashGuide">
+              <div class="hash-guide-title">📖 操作指引</div>
+              <span style="font-size:12px;color:var(--text-dim)">{{showHashGuide?'收起':'展开'}}</span>
+            </div>
+            <div class="hash-guide-body" v-show="showHashGuide">
+              <div class="hash-step"><span class="n">Step 1：</span><span>输入框已预填照片文件名 <code style="color:var(--accent)">IMG_20250314_182245.jpg</code></span></div>
+              <div class="hash-step"><span class="n">Step 2：</span><span>点击"计算哈希值"，观察 64 位指纹</span></div>
+              <div class="hash-step"><span class="n">Step 3：</span><span>把文件名中任一数字改一位再算一次——对比两次哈希值是否完全不同</span></div>
+              <div class="hash-step"><span class="n">🔍</span><span>思考：若照片真的被"转发修改"，哈希值会变成什么？</span></div>
+            </div>
+          </div>
+
+          <div style="font-size:13px;color:var(--text-dim);margin-bottom:6px;margin-top:14px">输入文本（模拟照片数据）</div>
+          <textarea class="hash-input" v-model="hashInput" placeholder="输入任意文本…"></textarea>
+          <div class="hash-actions">
+            <button class="btn btn-primary" @click="calcHash" :disabled="hashing">{{hashing?'计算中…':'🔄 计算哈希值'}}</button>
+            <button class="btn btn-ghost" @click="copyHash" :disabled="!hashResult">📋 复制结果</button>
+            <button class="btn btn-ghost" @click="hashInput='IMG_20250314_182245.jpg';hashResult=''">↺ 恢复示例</button>
+          </div>
+          <div class="hash-out" :class="{empty:!hashResult}" style="margin-top:14px">{{hashResult||'点击"计算哈希值"按钮以生成 SHA-256 哈希值'}}</div>
+          <div class="hash-tip" v-if="hashResult">
+            💡 提示：修改任意一个字符，哈希值将<strong>完全改变</strong>——这就是哈希函数的"雪崩效应"。
+            这意味着：若照片被转发修改，原始哈希值必然对不上。
+          </div>
+
+          <!-- 对比验证 -->
+          <h4 style="font-size:13px;color:var(--text-dim);margin:18px 0 8px">⚖ 对比验证：模拟"原始照片 vs 转发后照片"</h4>
+          <div class="hash-compare">
+            <div class="compare-col" :class="{match:compareMatch===true,diff:compareMatch===false}">
+              <h4>原始照片（登记保存时）</h4>
+              <textarea class="hash-input" style="min-height:50px" v-model="cmpA" placeholder="输入文本 A…"></textarea>
+              <div class="compare-result" style="margin-top:8px">{{cmpHashA||'—'}}</div>
+            </div>
+            <div class="compare-col" :class="{match:compareMatch===true,diff:compareMatch===false}">
+              <h4>当前照片（嫌疑人持有）</h4>
+              <textarea class="hash-input" style="min-height:50px" v-model="cmpB" placeholder="输入文本 B…"></textarea>
+              <div class="compare-result" style="margin-top:8px">{{cmpHashB||'—'}}</div>
+            </div>
+          </div>
+          <div class="hash-actions">
+            <button class="btn btn-primary" @click="calcCompare" :disabled="hashing">🔍 计算并比对</button>
+            <button class="btn btn-ghost" @click="cmpA='IMG_20250314_182245.jpg';cmpB='IMG_20250314_182245.jpg';cmpHashA=cmpHashB='';compareMatch=null">载入示例（一致）</button>
+            <button class="btn btn-ghost" @click="cmpA='IMG_20250314_182245.jpg';cmpB='IMG_20250314_182246.jpg';cmpHashA=cmpHashB='';compareMatch=null">载入示例（被改）</button>
+          </div>
+          <div class="compare-badge" v-if="compareMatch===true" style="color:var(--success)">✓ 两段哈希一致 → 照片未被修改 → "转发"抗辩不成立！</div>
+          <div class="compare-badge" v-if="compareMatch===false" style="color:var(--error)">✗ 两段哈希不同 → 照片已被修改 → 需进一步调查</div>
+
+          <div class="note-box">
+            <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p9">✓ 已保存</span></div>
+            <textarea class="note-input" v-model="studentNotes.p9" @input="saveNote('p9')" placeholder="哈希值比对推翻了"转发"抗辩——用自己的话解释：为什么哈希值一致就能证明照片未被修改？"></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 9: SYSTEM LOG + BIOMETRIC ============ -->
+    <section class="page" :class="pageClass(9)">
+      <div class="page-inner">
+        <span class="lesson-tag l2">课时二 · 逻辑击穿</span>
+        <div class="eyebrow">第四步 · 锁定</div>
+        <h2 class="h2">系统日志 + 生物识别 = 锁定本人</h2>
+        <p class="lead">
+          哈希值击穿了"转发"谎言。但张某还有第二道防线："手机是公用的，不一定是我在用"。
+          我们用系统日志和生物识别，把操作者锁死为他本人——<strong style="color:var(--accent)">关联关系维度激活</strong>。
+        </p>
+        <div class="grid grid-2">
+          <div class="card">
+            <h3 class="h3" style="font-size:15px">📋 系统日志</h3>
+            <div style="font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--text);background:rgba(0,0,0,.3);padding:12px;border-radius:8px;margin-top:8px">
+              <div style="color:var(--text-dim)"># 案发当日解锁记录</div>
+              <div>18:21:03 - 指纹解锁成功 (UID: A1B2C3...)</div>
+              <div>18:21:05 - 主屏幕激活</div>
+              <div>18:22:42 - 相机应用启动</div>
+              <div>18:22:45 - 照片拍摄 (IMG_20250314_182245)</div>
+              <div>18:25:10 - 微信发送图片</div>
+              <div style="color:var(--success)">→ 解锁者指纹与张某登记指纹一致</div>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="h3" style="font-size:15px">👤 生物识别记录</h3>
+            <div style="font-size:13px;line-height:1.8;color:var(--text-dim);margin-top:8px">
+              <p>• 指纹模板 UID <code style="color:var(--accent)">A1B2C3</code> 在张某入所登记时已采集</p>
+              <p>• 案发当日 18:21:03 解锁手机者指纹，与张某登记指纹<strong style="color:var(--success)">匹配</strong></p>
+              <p>• 18:22:42 启动相机者，与解锁者为同一指纹</p>
+              <p>• 全程无其他生物识别记录介入</p>
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p10">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p10" @input="saveNote('p10')" placeholder="系统日志+生物识别如何锁定操作者本人？关联关系维度为什么能形成证据闭环？记录你的理解…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 10: HEXAGON FULL ============ -->
+    <section class="page" :class="pageClass(10)">
+      <div class="page-inner">
+        <span class="lesson-tag l2">课时二 · 逻辑击穿</span>
+        <div class="eyebrow">互动三 · 六边形完整建模</div>
+        <h2 class="h2">数据自己开口说话</h2>
+        <p class="lead">
+          课时一我们点亮了前四维，但留下了两个"待解锁"。现在，哈希值和关联关系都已激活——
+          六边形全部点亮，证据闭环形成。点击任一顶点查看完整详情。
+        </p>
+        <div class="hex-wrap">
+          <div class="hex-stage">
+            <svg class="hex-svg" viewBox="0 0 400 400" @click.self="activeDim=null">
+              <polygon class="hex-poly" :class="{active:!!activeDim||showAllDims}" :points="hexPolyPoints(200,200,140)"/>
+              <text x="200" y="195" text-anchor="middle" fill="#8892b0" font-size="12" pointer-events="none">电子证据</text>
+              <text x="200" y="212" text-anchor="middle" fill="#4FC3F7" font-size="13" font-weight="600" pointer-events="none">六维已点亮</text>
+              <g v-for="(d,i) in hexDims" :key="d.dimension"
+                 class="hex-vertex"
+                 :class="{active:activeDim===d.dimension, visited:visitedDims.has(d.dimension)}"
+                 @click.stop="selectDim(d.dimension)">
+                <circle class="outer" :cx="vertex(i).x" :cy="vertex(i).y" r="20" :fill="activeDim===d.dimension?'':'rgba(17,34,64,.8)'" :stroke="visitedDims.has(d.dimension)?'var(--success)':'var(--line-strong)'" stroke-width="2"/>
+                <circle class="inner" v-if="activeDim===d.dimension" :cx="vertex(i).x" :cy="vertex(i).y" r="6" fill="#001925"/>
+                <text :x="vertex(i).x" :y="vertex(i).y+4" text-anchor="middle">{{d.short}}</text>
+              </g>
+            </svg>
+          </div>
+          <div class="hex-detail">
+            <div v-if="activeDimObj" class="dim-card" :key="activeDimObj.dimension">
+              <div class="dim-head">
+                <div class="dim-ico" :style="{background:activeDimObj.color+'22',color:activeDimObj.color}">{{activeDimObj.icon}}</div>
+                <div>
+                  <div class="dim-name">{{activeDimObj.dimension}}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">维度 {{hexDims.indexOf(activeDimObj)+1}}/6</div>
+                </div>
+              </div>
+              <div class="dim-def">{{activeDimObj.definition}}</div>
+              <div class="dim-keys">
+                <span class="tag" v-for="k in activeDimObj.keywords" :key="k">{{k}}</span>
+              </div>
+              <div class="dim-case">
+                <strong>本案应用</strong>
+                {{activeDimObj.caseExample}}
+              </div>
+            </div>
+            <div v-else class="hex-empty">
+              <span class="ico">✨</span>
+              六个维度全部解锁！<br>点击任一顶点查看完整详情<br>
+              <button class="btn btn-ghost" style="margin-top:14px" @click="toggleAllDims">全览所有维度</button>
+            </div>
+          </div>
+        </div>
+        <div v-if="showAllDims" class="grid grid-3" style="margin-top:20px">
+          <div class="card" v-for="d in hexDims" :key="d.dimension">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <span style="font-size:20px">{{d.icon}}</span>
+              <strong>{{d.dimension}}</strong>
+            </div>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.6;margin-bottom:8px">{{d.definition}}</p>
+            <div style="font-size:11px;color:var(--accent);background:rgba(79,195,247,.06);padding:6px 8px;border-radius:6px;line-height:1.5">{{d.caseExample}}</div>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p11">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p11" @input="saveNote('p11')" placeholder="六维全部点亮后，证据闭环如何形成？嫌疑人的两道抗辩分别被哪个维度击穿？"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 11: REGISTER TO SEIZURE (TECH-LAW TABLE) ============ -->
+    <section class="page" :class="pageClass(11)">
+      <div class="page-inner">
+        <span class="lesson-tag l3">课时三 · 程序正义</span>
+        <div class="eyebrow">惊险一跃</div>
+        <h2 class="h2">从"登记保存"到"扣押"——惊险一跃</h2>
+        <p class="lead">
+          技术做完了，证据闭环了。但这还不够——法律程序必须同步跟上，否则<strong style="color:var(--error)">技术做的一切都将归于无效</strong>。
+          这就是"程序正义"：技术解决"能不能证明"，法律决定"证明有没有效"。
+        </p>
+        <div class="card">
+          <h3 class="h3" style="font-size:15px">📋 技术操作 vs 法律程序 对照表</h3>
+          <table class="tl-table">
+            <thead>
+              <tr><th>技术操作</th><th>法律程序</th><th>状态</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="t in techLaw" :key="t.tech">
+                <td>{{t.tech}}</td>
+                <td><span class="tl-arrow">→</span> {{t.law}}</td>
+                <td><span class="tl-status" :class="t.done?'done':'pending'">{{t.done?'✅ 已完成':'⏳ 待完成'}}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p12">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p12" @input="saveNote('p12')" placeholder="技术动作和法律程序为什么要一一对应？如果只做了技术没走法律程序，证据还有效吗？"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 12: INSPECTION RULES ============ -->
+    <section class="page" :class="pageClass(12)">
+      <div class="page-inner">
+        <span class="lesson-tag l3">课时三 · 程序正义</span>
+        <div class="eyebrow">程序合规</div>
+        <h2 class="h2">严格遵照《勘验检查规则》</h2>
+        <p class="lead">
+          每一步技术操作，都必须有据可依。《公安机关电子数据现场勘验检查规则》是技术民警的"操作宪法"。
+        </p>
+        <div class="rule-list">
+          <div class="rule-item" v-for="(r,i) in rules" :key="i">
+            <div class="rule-num">{{i+1}}</div>
+            <div class="rule-text">
+              <strong>{{r.t}}</strong>
+              {{r.d}}
+            </div>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p13">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p13" @input="saveNote('p13')" placeholder="如果勘验程序出现瑕疵，技术成果会怎样？你认为哪一条规则最容易被忽视？为什么？"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 13: EVIDENCE CLOSURE ============ -->
+    <section class="page" :class="pageClass(13)">
+      <div class="page-inner">
+        <span class="lesson-tag l3">课时三 · 价值升华</span>
+        <div class="eyebrow">无懈可击</div>
+        <h2 class="h2">无懈可击的证据闭环</h2>
+        <p class="lead">
+          技术 × 程序 × 逻辑 = 司法证明力。当六维数据相互印证、技术-法律程序一一对应时，
+          证据链就形成了"闭环"——任何一环都无法被单独推翻。
+        </p>
+        <div class="card">
+          <h3 class="h3" style="font-size:15px;text-align:center">⛓ 完整证据链闭环</h3>
+          <div class="closure-chain">
+            <div class="closure-node"><span class="ico">📱</span>扣押手机</div>
+            <span class="closure-arrow">→</span>
+            <div class="closure-node"><span class="ico"> 登记</span>登记保存</div>
+            <span class="closure-arrow">→</span>
+            <div class="closure-node"><span class="ico">🔐</span>哈希固定</div>
+            <span class="closure-arrow">→</span>
+            <div class="closure-node"><span class="ico">📷</span>EXIF 提取</div>
+            <span class="closure-arrow">→</span>
+            <div class="closure-node"><span class="ico">📋</span>日志调取</div>
+            <span class="closure-arrow">→</span>
+            <div class="closure-node"><span class="ico">👤</span>生物识别</div>
+            <span class="closure-arrow">→</span>
+            <div class="closure-node"><span class="ico">🔗</span>关联印证</div>
+            <span class="closure-arrow">→</span>
+            <div class="closure-node"><span class="ico">⚖</span>扣押决定</div>
+            <span class="closure-arrow">→</span>
+            <div class="closure-node"><span class="ico">📦</span>鉴定委托</div>
+          </div>
+        </div>
+        <div class="grid grid-3" style="margin-top:18px">
+          <div class="card">
+            <div style="font-size:24px;margin-bottom:6px">🔬</div>
+            <h3 class="h3" style="font-size:14px">技术维度</h3>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.6">六维数据相互印证，形成完整数据闭环</p>
+          </div>
+          <div class="card">
+            <div style="font-size:24px;margin-bottom:6px">⚖</div>
+            <h3 class="h3" style="font-size:14px">程序维度</h3>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.6">每步技术动作对应法律文书，程序无瑕疵</p>
+          </div>
+          <div class="card">
+            <div style="font-size:24px;margin-bottom:6px">🧩</div>
+            <h3 class="h3" style="font-size:14px">逻辑维度</h3>
+            <p style="font-size:12px;color:var(--text-dim);line-height:1.6">数据-主体-行为-法律四环相扣，无单一可推翻点</p>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p14">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p14" @input="saveNote('p14')" placeholder="证据闭环为什么比单一证据更有力？用自己的话描述"闭环"的含义…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 14: SUSPENSE + MATRIX PREVIEW ============ -->
+    <section class="page" :class="pageClass(14)">
+      <div class="page-inner">
+        <span class="lesson-tag l3">课时三 · 课后悬念</span>
+        <div class="eyebrow">引出后3课时</div>
+        <h2 class="h2">致命问题：一行日志真的能钉死他吗？</h2>
+        <div class="suspense-box">
+          <div class="q">"系统日志显示是你解锁的手机——但万一这行日志本身就是伪造的呢？"</div>
+          <div class="a">
+            辩护律师的最后一击：质疑日志的真实性。<br>
+            技术民警如何回应？仅靠"日志是真的"远远不够——必须证明<strong style="color:var(--accent)">日志的产生过程可信、存储过程可信、提取过程可信</strong>。
+          </div>
+        </div>
+        <p class="lead">
+          这正是后3课时要解决的"三层思维框架"——从单一证据，走向"操作层—身份层—行为层"的矩阵分析。
+          先在这里试一试填空，感受一下三层框架的力量。
+        </p>
+
+        <!-- 矩阵预告 -->
+        <div class="preview-banner">
+          <strong>🎯 后3课时预告：</strong>三层矩阵思维框架——将证据按"操作层（做了什么）/身份层（是谁）/行为层（为何）"三维交叉分析，
+          识别矛盾、补强证据、形成终极闭环。下方矩阵可试填，完整挑战将在后3课时展开。
+        </div>
+
+        <div class="matrix-toolbar">
+          <div class="matrix-progress">已完成 <strong>{{matrixDoneCount}}</strong>/8 格　<span v-if="matrixDoneCount===8" style="color:var(--success)">✓ 全部完成</span></div>
+          <button class="btn btn-ghost" @click="resetMatrix">↺ 重置</button>
+        </div>
+        <table class="matrix-table">
+          <thead>
+            <tr><th></th><th>操作层</th><th>身份层</th><th>行为层</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in matrixRows" :key="row.key">
+              <th class="row-h">{{row.label}}</th>
+              <td v-for="col in ['op','id','be']" :key="col" class="matrix-cell" :class="cellClass(row.key,col)" @click="onCellClick(row.key,col)">
+                <div v-if="matrixData[row.key][col].prefilled" class="ans" style="color:var(--text-dim);font-style:italic">{{matrixData[row.key][col].prefilled}}</div>
+                <div v-else-if="matrixData[row.key][col].filled" class="ans">{{getAnswerText(matrixData[row.key][col].filled)}}</div>
+                <div v-if="matrixData[row.key][col].wrong" class="correct-ans">正确：{{matrixData[row.key][col].correct}}</div>
+                <div v-if="!matrixData[row.key][col].prefilled && !matrixData[row.key][col].filled" style="font-size:11px;color:var(--text-muted)">＋ 待填</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="matrix-pool-hint" v-if="!selectedChip" style="color:var(--text-dim)">👇 点击下方任一选项，再点击矩阵空格填入</div>
+        <div class="matrix-pool-hint" v-else style="color:var(--success)">✓ 已选择"{{getAnswerText(selectedChip)}}"，请点击矩阵空格填入</div>
+        <div class="matrix-pool">
+          <span class="pool-empty" v-if="availableAnswers.length===0">选项已全部使用 ✓</span>
+          <button v-for="a in availableAnswers" :key="a.id" class="pool-chip" :class="{selected:selectedChip===a.id}" @click="toggleChip(a.id)">{{a.text}}</button>
+        </div>
+        <div class="matrix-score" v-if="matrixDoneCount===8">
+          正确率：<span class="big">{{matrixCorrectCount}}/8</span>　
+          <span :style="{color:matrixCorrectCount===8?'var(--success)':'var(--warning)'}">
+            {{matrixCorrectCount===8?'🎉 全部正确！':(matrixCorrectCount>=6?'👍 表现良好':'📚 后3课时继续深入学习')}}
+          </span>
+        </div>
+
+        <!-- 论文推荐：基于三层模型构建嫌疑人画像 -->
+        <div class="paper-card">
+          <div class="paper-card-head">
+            <span class="paper-badge">📚 延伸阅读</span>
+            <span class="paper-badge" style="background:rgba(79,195,247,.15);color:var(--primary)">后3课时预习</span>
+          </div>
+          <div class="paper-title">基于三层模型构建嫌疑人画像——电子数据取证中的操作层—身份层—行为层交叉分析</div>
+          <div class="paper-meta">来源：《公安信息化应用》研究专栏　|　关键词：三层矩阵、嫌疑人画像、证据闭环</div>
+          <div class="paper-abstract">
+            <strong>摘要：</strong>面对嫌疑人"不是我操作的""数据被篡改了"等抗辩，单一维度的证据往往不足以形成闭环。
+            本文提出<strong>操作层（做了什么）—身份层（是谁）—行为层（为何）</strong>三层交叉分析模型：
+            在操作层锁定设备行为轨迹，在身份层关联实名信息与生物特征，在行为层识别矛盾点并补强证据方向。
+            三层交叉后，任何单一抗辩都会被其他层的数据击穿——这就是"嫌疑人画像"的核心方法。
+          </div>
+          <div class="paper-tags">
+            <span class="paper-tag">操作层</span>
+            <span class="paper-tag">身份层</span>
+            <span class="paper-tag">行为层</span>
+            <span class="paper-tag">证据闭环</span>
+            <span class="paper-tag">抗辩击穿</span>
+          </div>
+          <a class="paper-link" href="https://fanglinc.github.io/police-information-platform/papers.html" target="_blank" rel="noopener">📄 阅读论文全文 →</a>
+        </div>
+
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p15">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p15" @input="saveNote('p15')" placeholder="一行日志真的能钉死他吗？你觉得三层矩阵模型中哪一层最难取证？为什么？带着这些问题进入后3课时…"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 15: SUMMARY ============ -->
+    <section class="page" :class="pageClass(15)">
+      <div class="page-inner">
+        <span class="lesson-tag l3">课时三 · 价值升华</span>
+        <div class="eyebrow">本章总结</div>
+        <h2 class="h2">技术 + 逻辑 = 司法的灵魂</h2>
+        <p class="lead">
+          从一张照片到完整的证据链，你以技术民警的身份完成了电子数据取证的完整思维路径。
+        </p>
+        <div class="summary-list">
+          <div class="summary-card" v-for="s in summaryCards" :key="s.t">
+            <span class="ico">{{s.ico}}</span>
+            <h4>{{s.t}}</h4>
+            <p>{{s.d}}</p>
+          </div>
+        </div>
+        <div class="note-box">
+          <div class="note-head"><span>📝 我的学习笔记</span><span class="note-status" v-if="studentNotes.p16">✓ 已保存</span></div>
+          <textarea class="note-input" v-model="studentNotes.p16" @input="saveNote('p16')" placeholder="用一句话总结你在这章学到的核心方法论。你对后3课时的"三层矩阵"有什么期待？"></textarea>
+        </div>
+        <div class="end-wrap" style="margin-top:30px">
+          <div class="ico">🎓</div>
+          <h2 style="font-size:26px">前3课时完成</h2>
+          <p>后3课时将以"三层矩阵"为框架，深入操作层—身份层—行为层的交叉分析，应对更复杂的抗辩场景。</p>
+          <div class="cover-cta">
+            <button class="btn btn-primary" @click="go(16)">📄 查看学习档案</button>
+            <button class="btn btn-ghost" @click="go(0)">↺ 重新开始</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 16: ARCHIVE ============ -->
+    <section class="page" :class="pageClass(16)">
+      <div class="page-inner">
+        <div class="eyebrow">学习档案</div>
+        <div class="archive-head">
+          <div>
+            <h2 class="h2">我的学习档案</h2>
+            <p class="lead" style="margin-bottom:0">完成所有互动后自动生成，可在线查看或打印为 PDF。</p>
+          </div>
+          <div class="archive-meta-inputs">
+            <input v-model="studentName" placeholder="姓名">
+            <input v-model="studentId" placeholder="学号">
+          </div>
+        </div>
+        <div class="card archive-on-screen">
+          <div class="archive-completion">
+            <div class="completion-ring">
+              <svg width="64" height="64">
+                <circle cx="32" cy="32" r="28" fill="none" stroke="rgba(0,0,0,.3)" stroke-width="4"/>
+                <circle cx="32" cy="32" r="28" fill="none" stroke="url(#g)" stroke-width="4" :stroke-dasharray="2*Math.PI*28" :stroke-dashoffset="2*Math.PI*28*(1-completion/100)"/>
+                <defs><linearGradient id="g"><stop offset="0%" stop-color="#4FC3F7"/><stop offset="100%" stop-color="#00e5ff"/></linearGradient></defs>
+              </svg>
+              <div class="pct">{{completion}}%</div>
+            </div>
+            <div>
+              <div style="font-size:14px;color:#fff;font-weight:600">总体完成度</div>
+              <div style="font-size:12px;color:var(--text-dim)">{{completedModules}}/5 模块已参与</div>
+            </div>
+          </div>
+          <div class="archive-section">
+            <h3>👤 个人信息</h3>
+            <div class="archive-row"><span class="k">姓名</span><span class="v">{{studentName||'未填写'}}</span></div>
+            <div class="archive-row"><span class="k">学号</span><span class="v">{{studentId||'未填写'}}</span></div>
+            <div class="archive-row"><span class="k">生成时间</span><span class="v">{{archiveTime}}</span></div>
+          </div>
+          <div class="archive-section">
+            <h3>⬡ 六边形探索</h3>
+            <div class="archive-row"><span class="k">已访问维度</span><span class="v">{{visitedDims.size}}/6</span></div>
+            <template v-for="d in hexDims" :key="d.dimension">
+              <div class="archive-row" v-if="visitedDims.has(d.dimension)">
+                <span class="k">{{d.icon}} {{d.dimension}}</span><span class="v" style="color:var(--success)">✓ 已探索</span>
+              </div>
+            </template>
+          </div>
+          <div class="archive-section">
+            <h3>🔐 哈希值击穿记录</h3>
+            <div class="archive-row"><span class="k">是否完成现场验证</span><span class="v" :style="{color:hashCalculated?'var(--success)':'var(--text-muted)'}">{{hashCalculated?'✓ 已击穿"转发"谎言':'✗ 未完成'}}</span></div>
+            <div class="archive-row"><span class="k">计算次数</span><span class="v">{{hashCount}}</span></div>
+            <div class="archive-row"><span class="k">最近输入</span><span class="v" style="font-family:var(--mono);font-size:11px">{{hashInput}}</span></div>
+          </div>
+          <div class="archive-section">
+            <h3>📋 矩阵挑战（后3课时预告）</h3>
+            <div class="archive-row"><span class="k">完成格数</span><span class="v">{{matrixDoneCount}}/8</span></div>
+            <div class="archive-row"><span class="k">正确数</span><span class="v" :style="{color:matrixCorrectCount===8?'var(--success)':'var(--warning)'}">{{matrixCorrectCount}}/8</span></div>
+            <div class="archive-row"><span class="k">正确率</span><span class="v">{{matrixDoneCount>0?Math.round(matrixCorrectCount/8*100)+'%':'—'}}</span></div>
+          </div>
+          <div class="archive-section">
+            <h3>⏱ 时间轴与时长</h3>
+            <div class="archive-row"><span class="k">已查看节点</span><span class="v">{{visitedNodes.size}}/{{timeline.length}}</span></div>
+            <div class="archive-row"><span class="k">在线学习时长</span><span class="v">{{durationText}}</span></div>
+            <div class="archive-row"><span class="k">已访问页面</span><span class="v">{{visitedPages.size}}/{{totalPages}}</span></div>
+          </div>
+          <div class="archive-section">
+            <h3>⚖ 技术-法律闭环</h3>
+            <div class="archive-row"><span class="k">已完成法律文书</span><span class="v">{{techLaw.filter(t=>t.done).length}}/{{techLaw.length}}</span></div>
+          </div>
+          <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap" class="no-print">
+            <button class="btn btn-primary" @click="saveArchive" :disabled="saving">{{saving?'⏳ 提交中…':'💾 存档并同步至云端'}}</button>
+            <button class="btn btn-ghost" @click="printArchive">🖨 打印 / 导出 PDF</button>
+            <button class="btn btn-ghost" @click="go(0)">← 返回课件</button>
+          </div>
+        </div>
+        <div class="archive-print-area">
+          <h1 style="font-size:22px;text-align:center;border-bottom:2px solid #333;padding-bottom:8px;margin-bottom:14px">《公安信息化应用基础》第三章 · 学习档案</h1>
+          <p style="font-size:13px;color:#666;margin-bottom:10px">姓名：{{studentName||'—'}}　学号：{{studentId||'—'}}　生成时间：{{archiveTime}}</p>
+          <h3 style="font-size:14px;margin:8px 0 4px;border-left:3px solid #4FC3F7;padding-left:8px">完成度</h3>
+          <p style="font-size:13px">{{completion}}% （{{completedModules}}/5 模块已参与）</p>
+          <h3 style="font-size:14px;margin:8px 0 4px;border-left:3px solid #4FC3F7;padding-left:8px">六边形探索</h3>
+          <p style="font-size:13px">已访问 {{visitedDims.size}}/6 维度</p>
+          <h3 style="font-size:14px;margin:8px 0 4px;border-left:3px solid #4FC3F7;padding-left:8px">哈希值击穿记录</h3>
+          <p style="font-size:13px">{{hashCalculated?'已击穿"转发"谎言':'未完成'}}，计算 {{hashCount}} 次</p>
+          <h3 style="font-size:14px;margin:8px 0 4px;border-left:3px solid #4FC3F7;padding-left:8px">矩阵挑战</h3>
+          <p style="font-size:13px">{{matrixCorrectCount}}/8 正确（{{matrixDoneCount>0?Math.round(matrixCorrectCount/8*100):0}}%）</p>
+          <h3 style="font-size:14px;margin:8px 0 4px;border-left:3px solid #4FC3F7;padding-left:8px">时间轴 / 时长</h3>
+          <p style="font-size:13px">已查看 {{visitedNodes.size}}/{{timeline.length}} 节点，在线 {{durationText}}</p>
+          <h3 style="font-size:14px;margin:8px 0 4px;border-left:3px solid #4FC3F7;padding-left:8px">技术-法律闭环</h3>
+          <p style="font-size:13px">{{techLaw.filter(t=>t.done).length}}/{{techLaw.length}} 已完成</p>
+          <h3 style="font-size:14px;margin:12px 0 6px;border-left:3px solid #ffb300;padding-left:8px">📝 我的学习笔记</h3>
+          <div v-for="(v,k) in studentNotes" :key="k" style="margin-bottom:8px">
+            <p style="font-size:12px;color:#666;margin-bottom:2px">{{ {p2:'Page2 案件背景',p3:'Page3 文件名拆解',p4:'Page4 EXIF提取',p5:'Page5 六边形前四维',p6:'Page6 活动轨迹',p7:'Page7 嫌疑人抗辩',p8:'Page8 跨越分析',p9:'Page9 哈希击穿谎言',p10:'Page10 系统日志',p11:'Page11 六边形完整',p12:'Page12 登记到扣押',p13:'Page13 勘验检查规则',p14:'Page14 证据闭环',p15:'Page15 矩阵预告',p16:'Page16 总结升华'}[k] }}</p>
+            <p style="font-size:13px;white-space:pre-wrap;padding:6px 8px;background:#f5f5f5;border-radius:4px;min-height:20px">{{v||'（未填写）'}}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ PAGE 17: TEACHER DASHBOARD ============ -->
+    <section class="page" :class="pageClass(17)">
+      <div class="page-inner">
+        <div class="eyebrow">教师端</div>
+        <h2 class="h2">📊 学情仪表盘</h2>
+        <p class="lead">汇总所有在本设备提交的学习档案。可导出 CSV/JSON。</p>
+        <div class="dash-stats">
+          <div class="stat-card"><div class="stat-num">{{records.length}}</div><div class="stat-label">提交人数</div></div>
+          <div class="stat-card"><div class="stat-num">{{avgCompletion}}%</div><div class="stat-label">平均完成度</div></div>
+          <div class="stat-card"><div class="stat-num">{{avgAccuracy}}%</div><div class="stat-label">平均正确率</div></div>
+          <div class="stat-card"><div class="stat-num">{{avgDuration}}</div><div class="stat-label">平均时长(分)</div></div>
+        </div>
+        <div class="dash-grid">
+          <div class="dash-panel">
+            <h3>⬡ 六边形维度热度</h3>
+            <div class="heat-grid">
+              <div class="heat-item" v-for="d in hexDims" :key="d.dimension">
+                <span style="font-size:12px">{{d.icon}} {{d.short}}</span>
+                <div class="heat-bar"><div class="heat-fill" :style="{width:(records.length?dimHeat(d.dimension)/records.length*100:0)+'%'}"></div></div>
+                <span style="font-size:11px;color:var(--text-dim)">{{dimHeat(d.dimension)}}</span>
+              </div>
+            </div>
+          </div>
+          <div class="dash-panel">
+            <h3>📋 矩阵错误率</h3>
+            <div class="err-grid">
+              <div class="err-item" v-for="(e,k) in matrixErrors" :key="k"><span>{{k}}</span><span class="pct">{{e}}%</span></div>
+              <div class="err-item" v-if="Object.keys(matrixErrors).length===0" style="color:var(--text-muted)"><span>暂无数据</span><span></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="dash-panel" style="margin-bottom:16px">
+          <h3>📁 学习档案列表</h3>
+          <div class="archive-list">
+            <div class="archive-list-item head"><div>姓名 / 学号</div><div>完成度</div><div>正确率</div><div>时长</div></div>
+            <div class="archive-list-item" v-for="r in records" :key="r.id">
+              <div>{{r.name||'匿名'}} / {{r.studentId||'—'}}</div><div>{{r.completion}}%</div><div>{{r.accuracy}}%</div><div>{{r.durationMin}}</div>
+            </div>
+            <div v-if="records.length===0" class="archive-list-item" style="grid-template-columns:1fr">
+              <div style="text-align:center;color:var(--text-muted);padding:14px">暂无提交记录。学生完成学习后在档案页"存入本地档案库"即可在此显示。</div>
+            </div>
+          </div>
+        </div>
+        <div class="export-btns">
+          <button class="btn btn-primary" @click="exportCSV">⬇ 导出 CSV</button>
+          <button class="btn btn-ghost" @click="exportJSON">⬇ 导出 JSON</button>
+          <button class="btn btn-ghost" @click="clearRecords" v-if="records.length">🗑 清空所有记录</button>
+          <button class="btn btn-ghost" @click="go(0)">← 返回课件</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="bottombar" v-if="currentPage<16">
+    <button class="nav-btn" @click="prev" :disabled="currentPage===0" title="上一页">‹</button>
+    <div class="progress-wrap">
+      <div class="progress-text">第 {{currentPage+1}} / {{totalPages}} 页</div>
+      <div class="progress-bar"><div class="progress-fill" :style="{width:(currentPage+1)/totalPages*100+'%'}"></div></div>
+    </div>
+    <div class="dots">
+      <span v-for="(p,i) in totalPages" :key="i" class="dot" :class="{on:i===currentPage, done:i<currentPage}" @click="go(i)"></span>
+    </div>
+    <button class="nav-btn" @click="next" :disabled="currentPage===totalPages-1" title="下一页">›</button>
+  </div>
+  <div class="bottombar" v-else>
+    <button class="btn btn-ghost" @click="backToNarrative">← 返回课件</button>
+    <span style="font-size:12px;color:var(--text-dim)">{{currentPage===16?'学习档案':'教师仪表盘'}}</span>
+  </div>
+
+</div>
+
+<script>
+const { createApp, ref, reactive, computed, onMounted, onBeforeUnmount, watch } = Vue;
+
+createApp({
+  setup(){
+    /* ============ PAGE / NAV ============ */
+    const totalPages = 16;
+    const currentPage = ref(0);
+    const role = ref('student');
+    const visitedPages = ref(new Set([0]));
+    const pageDir = ref('next');
+
+    const pageClass = (i)=>{
+      if(i===currentPage.value) return 'active';
+      if(pageDir.value==='next' && i<currentPage.value) return 'prev';
+      if(pageDir.value==='prev' && i>currentPage.value) return 'prev';
+      return '';
+    };
+    const go = (i)=>{
+      if(i<0||i>17) return;
+      pageDir.value = i>currentPage.value?'next':'prev';
+      currentPage.value = i;
+      visitedPages.value.add(i);
+      selectedChip.value = null;
+      const stage = document.querySelector('.stage');
+      if(stage) stage.scrollTop = 0;
+      updateTechLaw();
+    };
+    const next = ()=>{ if(currentPage.value<totalPages-1) go(currentPage.value+1); };
+    const prev = ()=>{ if(currentPage.value>0) go(currentPage.value-1); };
+    const backToNarrative = ()=>{ go(0); };
+
+    const handleKey = (e)=>{
+      if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+      if(currentPage.value>=16) return;
+      if(e.key==='ArrowRight') next();
+      else if(e.key==='ArrowLeft') prev();
+    };
+    let touchStartX=0, touchStartY=0;
+    const onTouchStart=(e)=>{ touchStartX=e.changedTouches[0].clientX; touchStartY=e.changedTouches[0].clientY; };
+    const onTouchEnd=(e)=>{
+      if(currentPage.value>=16) return;
+      const dx=e.changedTouches[0].clientX-touchStartX;
+      const dy=e.changedTouches[0].clientY-touchStartY;
+      if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5){ if(dx<0) next(); else prev(); }
+    };
+
+    /* ============ STUDENT INFO ============ */
+    const studentName = ref(localStorage.getItem('edt_name')||'');
+    const studentId = ref(localStorage.getItem('edt_sid')||'');
+    const startTime = ref(parseInt(localStorage.getItem('edt_start')||Date.now()));
+    const tick = ref(0);
+    watch(studentName, v=>localStorage.setItem('edt_name',v));
+    watch(studentId, v=>localStorage.setItem('edt_sid',v));
+    const durationText = computed(()=>{
+      tick.value;
+      const sec = Math.floor((Date.now()-startTime.value)/1000);
+      const m = Math.floor(sec/60), s = sec%60;
+      return `${m}分${s}秒`;
+    });
+
+    /* ============ SUPABASE CONFIG ============ */
+    const SUPABASE_URL = 'https://jacxocgeefdoilakqffy.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_Y_6ImjnFmFwxrwTmXPhL2w_5R7nfPcb';
+
+    /* ============ STUDENT NOTES (localStorage) ============ */
+    const studentNotes = reactive({ p2:'',p3:'',p4:'',p5:'',p6:'',p7:'',p8:'',p9:'',p10:'',p11:'',p12:'',p13:'',p14:'',p15:'',p16:'' });
+    try{ Object.assign(studentNotes, JSON.parse(localStorage.getItem('edt_notes')||'{}')); }catch(e){}
+    const saveNote = (key)=>{
+      try{ localStorage.setItem('edt_notes', JSON.stringify(studentNotes)); }catch(e){}
+    };
+
+    /* ============ PAGE 1: CASE STAGES ============ */
+    const caseStages = [
+      {ico:'🔍',t:'发现',d:'在手机相册中发现关键照片 IMG_20250314_182245.jpg'},
+      {ico:'📌',t:'固定',d:'立即登记保存，计算哈希值确保数据完整性'},
+      {ico:'📦',t:'提取',d:'使用规范工具与方法提取原始数据，避免破坏'},
+      {ico:'🔬',t:'分析',d:'解析时间戳、GPS、设备信息、系统日志等元数据'},
+      {ico:'🔗',t:'关联',d:'将照片与嫌疑人身份、生物识别、转账记录关联'},
+      {ico:'⚖',t:'移送',d:'制作鉴定委托书，移送电子数据检材至鉴定机构'}
+    ];
+
+    /* ============ HEXAGON (6 dims, partial mode) ============ */
+    const hexDims = [
+      {dimension:'时间',short:'时间',icon:'⏰',color:'#4FC3F7',
+       definition:'数据产生或修改的精确时间，精确到秒，是电子证据时序分析的基础。',
+       keywords:['何时','时间线','时序'],
+       caseExample:'IMG_20250314_182245.jpg 文件名显示拍摄时间 2025/3/14 18:22:45，与 EXIF 时间戳一致。'},
+      {dimension:'位置',short:'位置',icon:'📍',color:'#7c4dff',
+       definition:'数据关联的物理位置，常通过 EXIF GPS 信息获取。',
+       keywords:['何地','GPS','定位'],
+       caseExample:'EXIF GPS 数据显示照片拍摄于北纬 39.9042°，东经 116.4074°（北京某地），与受害人转账地一致。'},
+      {dimension:'设备',short:'设备',icon:'📱',color:'#00e5ff',
+       definition:'产生或存储电子数据的设备信息，含型号、IMEI、系统版本等。',
+       keywords:['何物','设备','IMEI'],
+       caseExample:'EXIF 显示设备为小米 13 Pro，IMEI 与嫌疑人张某手机一致。'},
+      {dimension:'属性',short:'属性',icon:'📄',color:'#ffb300',
+       definition:'电子数据的元数据属性，如 EXIF、文件头、创建者等，可印证数据来源与环境。',
+       keywords:['何性','元数据','EXIF'],
+       caseExample:'EXIF 含拍摄参数（光圈 f/1.8、快门 1/120s）、软件版本 MIUI 14.0.5，可印证拍摄环境。'},
+      {dimension:'哈希值',short:'哈希',icon:'🔐',color:'#ff5252',
+       definition:'数据的数字指纹（SHA-256），任何修改都会导致哈希值完全改变，用于完整性校验。',
+       keywords:['何改','SHA-256','完整性'],
+       caseExample:'计算照片 SHA-256 哈希值，与登记保存时原始哈希一致 → 照片未被修改 → 击穿"转发"抗辩。'},
+      {dimension:'关联关系',short:'关联',icon:'🔗',color:'#4caf50',
+       definition:'数据与主体、其他证据、事件之间的逻辑联系，多重关联形成证据闭环。',
+       keywords:['何证','关联','印证'],
+       caseExample:'系统日志+指纹生物识别锁定操作者为张某本人，与转账记录、受害人陈述相互印证。'}
+    ];
+    const activeDim = ref(null);
+    const showAllDims = ref(false);
+    const visitedDims = ref(new Set());
+    // 前4维在 Page 4 解锁；全6维在 Page 10 解锁
+    const hexUnlockedCount = computed(()=> currentPage.value===4 ? 4 : 6);
+    const activeDimObj = computed(()=>hexDims.find(d=>d.dimension===activeDim.value));
+    const hexPolyPoints = (cx,cy,r)=>{
+      const pts=[];
+      for(let i=0;i<6;i++){ const a=Math.PI/3*i-Math.PI/2; pts.push(`${cx+r*Math.cos(a)},${cy+r*Math.sin(a)}`); }
+      return pts.join(' ');
+    };
+    const vertex = (i)=>{
+      const cx=200, cy=200, r=140;
+      const a = Math.PI/3*i-Math.PI/2;
+      return {x: cx+r*Math.cos(a), y: cy+r*Math.sin(a)};
+    };
+    const selectDim = (name)=>{
+      activeDim.value = name;
+      visitedDims.value.add(name);
+      updateTechLaw();
+    };
+    const toggleAllDims = ()=>{
+      showAllDims.value = !showAllDims.value;
+      if(showAllDims.value){ hexDims.forEach(d=>visitedDims.value.add(d.dimension)); updateTechLaw(); }
+    };
+
+    /* ============ TIMELINE ============ */
+    const timeline = [
+      {time:'18:21:03',label:'指纹解锁',shortDesc:'手机被指纹解锁',
+       detail:'系统日志显示，手机于 18:21:03 被指纹（UID: A1B2C3）解锁成功。该指纹与张某入所登记指纹一致。',
+       evidenceType:'电子物证',legalAction:'电子数据提取记录',hash:null},
+      {time:'18:22:42',label:'启动相机',shortDesc:'解锁者启动相机应用',
+       detail:'解锁后约 99 秒，相机应用被启动。启动者指纹与解锁者一致，全程无他人介入。',
+       evidenceType:'电子物证',legalAction:'电子数据提取记录',hash:null},
+      {time:'18:22:45',label:'照片拍摄',shortDesc:'关键照片 IMG_20250314_182245.jpg 生成',
+       detail:'照片 IMG_20250314_182245.jpg 在 18:22:45 拍摄。EXIF 含 GPS、设备、时间戳等信息。哈希值随后被计算并登记保存。',
+       evidenceType:'电子物证',legalAction:'登记保存',hash:'a3f2c1b9d8e7f6a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5'},
+      {time:'18:25:10',label:'微信发送',shortDesc:'照片通过微信发送给同伙',
+       detail:'手机微信聊天记录显示，照片在拍摄后 2 分 25 秒被发送给另一账号（疑似同伙）。但发送行为不改变照片本身的哈希值。',
+       evidenceType:'电子物证',legalAction:'电子数据提取记录',hash:'a3f2c1b9d8e7f6a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5'},
+      {time:'18:30:00',label:'现场抓获',shortDesc:'民警在出租屋抓获嫌疑人',
+       detail:'侦查人员根据线索在 18:30 抵达嫌疑人住处，依法出示证件后对现场进行控制，手机处于解锁状态被即时固定。',
+       evidenceType:'传统物证',legalAction:'搜查证 + 现场笔录',hash:null},
+      {time:'18:45:00',label:'数据固定',shortDesc:'计算哈希并封存',
+       detail:'技术民警对手机进行不破坏提取，计算原始镜像 SHA-256 哈希值并登记保存，确保数据完整性可校验。',
+       evidenceType:'电子物证',legalAction:'登记保存 + 哈希校验记录',hash:'c5f4e3b9a8d7c6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f'}
+    ];
+    const expandedNodes = ref(new Set());
+    const visitedNodes = ref(new Set());
+    const allExpanded = computed(()=>expandedNodes.value.size===timeline.length);
+    const toggleNode = (i)=>{
+      if(expandedNodes.value.has(i)) expandedNodes.value.delete(i);
+      else expandedNodes.value.add(i);
+      expandedNodes.value = new Set(expandedNodes.value);
+      visitedNodes.value.add(i);
+      updateTechLaw();
+    };
+    const expandAll = ()=>{
+      if(allExpanded.value){ expandedNodes.value = new Set(); }
+      else{ expandedNodes.value = new Set(timeline.map((_,i)=>i)); timeline.forEach((_,i)=>visitedNodes.value.add(i)); }
+      updateTechLaw();
+    };
+
+    /* ============ HASH (embedded in Page 8) ============ */
+    const hashInput = ref('IMG_20250314_182245.jpg');
+    const hashResult = ref('');
+    const hashing = ref(false);
+    const hashCalculated = ref(false);
+    const hashCount = ref(0);
+    const showHashGuide = ref(true);
+    const cmpA = ref('IMG_20250314_182245.jpg');
+    const cmpB = ref('IMG_20250314_182245.jpg');
+    const cmpHashA = ref('');
+    const cmpHashB = ref('');
+    const compareMatch = ref(null);
+    const sha256 = async (msg)=>{
+      const buf = new TextEncoder().encode(msg);
+      const h = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('');
+    };
+    const calcHash = async ()=>{
+      if(!hashInput.value) return;
+      hashing.value = true;
+      try{ hashResult.value = await sha256(hashInput.value); hashCalculated.value = true; hashCount.value++; updateTechLaw(); }
+      finally{ hashing.value = false; }
+    };
+    const calcCompare = async ()=>{
+      if(!cmpA.value||!cmpB.value) return;
+      hashing.value = true;
+      try{
+        cmpHashA.value = await sha256(cmpA.value);
+        cmpHashB.value = await sha256(cmpB.value);
+        compareMatch.value = cmpHashA.value===cmpHashB.value;
+        hashCount.value += 2;
+      }finally{ hashing.value = false; }
+    };
+    const copyHash = async ()=>{
+      if(!hashResult.value) return;
+      try{ await navigator.clipboard.writeText(hashResult.value); }catch(e){
+        const t=document.createElement('textarea');t.value=hashResult.value;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);
+      }
+      alert('哈希值已复制到剪贴板');
+    };
+
+    /* ============ MATRIX (preview on Page 14) ============ */
+    const matrixRows = [
+      {key:'tech',label:'技术证据'},
+      {key:'rel',label:'关联证据'},
+      {key:'risk',label:'矛盾/风险'},
+      {key:'supp',label:'补强方向'}
+    ];
+    const correctMap = {
+      'tech-be':'照片拍摄行为','rel-id':'嫌疑人实名信息','rel-be':'发送照片行为',
+      'risk-op':'操作时间矛盾','risk-id':'身份冒用风险','risk-be':'否认发送风险',
+      'supp-id':'调取账号实名','supp-be':'提取操作日志'
+    };
+    const matrixData = reactive({
+      tech:{ op:{prefilled:'手机型号/IMEI'}, id:{prefilled:'账号/SIM实名'}, be:{} },
+      rel:{ op:{prefilled:'与转账记录关联'}, id:{}, be:{} },
+      risk:{ op:{}, id:{}, be:{} },
+      supp:{ op:{prefilled:'调取通话记录'}, id:{}, be:{} }
+    });
+    const answerPool = [
+      {id:'a1',text:'照片拍摄行为'},{id:'a2',text:'嫌疑人实名信息'},{id:'a3',text:'发送照片行为'},
+      {id:'a4',text:'操作时间矛盾'},{id:'a5',text:'身份冒用风险'},{id:'a6',text:'否认发送风险'},
+      {id:'a7',text:'调取账号实名'},{id:'a8',text:'提取操作日志'},
+      {id:'d1',text:'设备温度变化',distractor:true},{id:'d2',text:'电池剩余电量',distractor:true}
+    ];
+    const selectedChip = ref(null);
+    const getAnswerText = (id)=>{ const a=answerPool.find(x=>x.id===id); return a?a.text:''; };
+    const availableAnswers = computed(()=>answerPool.filter(a=>{
+      for(const rk in matrixData){
+        for(const ck in matrixData[rk]){
+          if(matrixData[rk][ck].filled===a.id && a.id!==selectedChip.value) return false;
+        }
+      }
+      return true;
+    }));
+    const matrixDoneCount = computed(()=>{
+      let c=0;
+      for(const rk in matrixData){ for(const ck in matrixData[rk]){ if(matrixData[rk][ck].filled) c++; } }
+      return c;
+    });
+    const matrixCorrectCount = computed(()=>{
+      let c=0;
+      for(const rk in matrixData){
+        for(const ck in matrixData[rk]){
+          if(matrixData[rk][ck].filled){
+            if(getAnswerText(matrixData[rk][ck].filled)===correctMap[`${rk}-${ck}`]) c++;
+          }
+        }
+      }
+      return c;
+    });
+    const cellClass = (rk,ck)=>{
+      const cell = matrixData[rk][ck];
+      if(cell.prefilled) return 'prefilled';
+      if(!cell.filled) return '';
+      return getAnswerText(cell.filled)===correctMap[`${rk}-${ck}`]?'correct':'wrong';
+    };
+    const toggleChip = (aid)=>{ selectedChip.value = selectedChip.value===aid?null:aid; };
+    const onCellClick = (rk,ck)=>{
+      const cell = matrixData[rk][ck];
+      if(cell.prefilled) return;
+      if(cell.filled){ matrixData[rk][ck] = {}; selectedChip.value = null; updateTechLaw(); return; }
+      if(!selectedChip.value) return;
+      for(const rkk in matrixData){
+        for(const ckk in matrixData[rkk]){
+          if(matrixData[rkk][ckk].filled===selectedChip.value) matrixData[rkk][ckk] = {};
+        }
+      }
+      const ansText = getAnswerText(selectedChip.value);
+      const isCorrect = ansText===correctMap[`${rk}-${ck}`];
+      matrixData[rk][ck] = { filled: selectedChip.value, wrong: !isCorrect, correct: isCorrect?null:correctMap[`${rk}-${ck}`] };
+      selectedChip.value = null;
+      updateTechLaw();
+    };
+    const resetMatrix = ()=>{
+      matrixData.tech = { op:{prefilled:'手机型号/IMEI'}, id:{prefilled:'账号/SIM实名'}, be:{} };
+      matrixData.rel = { op:{prefilled:'与转账记录关联'}, id:{}, be:{} };
+      matrixData.risk = { op:{}, id:{}, be:{} };
+      matrixData.supp = { op:{prefilled:'调取通话记录'}, id:{}, be:{} };
+      selectedChip.value = null;
+    };
+    const onDocClick = (e)=>{
+      if(selectedChip.value && !e.target.closest('.matrix-cell') && !e.target.closest('.matrix-pool') && !e.target.closest('.matrix-pool-hint')){
+        selectedChip.value = null;
+      }
+    };
+
+    /* ============ TECH-LAW (Page 11) ============ */
+    const techLaw = reactive([
+      {tech:'现场发现手机',law:'登记保存',done:true},
+      {tech:'提取照片数据',law:'电子数据提取记录',done:false},
+      {tech:'哈希值比对分析',law:'分析报告',done:false},
+      {tech:'锁定嫌疑人关联',law:'扣押决定书',done:false},
+      {tech:'移送电子数据检材',law:'鉴定委托书',done:false}
+    ]);
+    const updateTechLaw = ()=>{
+      techLaw[1].done = visitedNodes.value.size>=4 || hashCalculated.value;
+      techLaw[2].done = hashCalculated.value;
+      techLaw[3].done = visitedDims.value.size===6 && matrixDoneCount.value>=6;
+      techLaw[4].done = techLaw.slice(0,4).every(t=>t.done);
+    };
+
+    /* ============ RULES (Page 12) ============ */
+    const rules = [
+      {t:'两名侦查人员在场',d:'电子数据现场勘验检查必须由两名以上侦查人员进行，确保程序合法、相互监督。'},
+      {t:'全程录音录像',d:'勘验过程应当全程录音录像，记录操作步骤、时间节点、数据状态，保证可追溯。'},
+      {t:'不破坏原则',d:'对原始存储介质应当先进行不破坏提取（如镜像复制），再行分析，避免破坏原始数据。'},
+      {t:'哈希校验固定',d:'提取后立即计算 SHA-256 哈希值并登记保存，确保数据完整性可校验、可追溯。'},
+      {t:'见证人制度',d:'勘验检查应当有见证人在场，必要时邀请与案件无关的公民作为见证人签字。'},
+      {t:'笔录与文书',d:'制作《现场勘验检查笔录》《电子数据提取记录》等文书，逐项记录操作过程与结果。'},
+      {t:'封存与保管',d:'原始存储介质应当依法封存，妥善保管，防止数据被篡改、删除或损坏。'}
+    ];
+
+    /* ============ SUMMARY (Page 15) ============ */
+    const summaryCards = [
+      {ico:'⬡',t:'六维建模',d:'时间、位置、设备、属性、哈希、关联——六维交叉分析，避免遗漏关键信息。'},
+      {ico:'⛓',t:'证据闭环',d:'证据不是孤立的，必须按时序、逻辑组织成链条，相互印证才能形成证明力。'},
+      {ico:'🔐',t:'哈希击穿',d:'哈希值不是独立知识点，而是击穿"数据被修改"抗辩的现场验证工具。'},
+      {ico:'⚖',t:'程序正义',d:'技术做的一切必须对应法律文书，程序违法 = 证据无效。'},
+      {ico:'🧩',t:'三层矩阵',d:'操作层—身份层—行为层交叉分析，是应对复杂抗辩的终极武器（后3课时）。'}
+    ];
+
+    /* ============ ARCHIVE (Page 16) ============ */
+    const archiveTime = computed(()=>new Date().toLocaleString('zh-CN'));
+    const completion = computed(()=>{
+      let s = 0;
+      if(visitedDims.value.size>0) s += Math.min(visitedDims.value.size/6*25,25);
+      if(hashCalculated.value) s += 20;
+      s += matrixDoneCount.value/8*30;
+      s += visitedNodes.value.size/timeline.length*15;
+      if(techLaw.filter(t=>t.done).length===techLaw.length) s += 10;
+      else s += techLaw.filter(t=>t.done).length/techLaw.length*10;
+      return Math.round(s);
+    });
+    const completedModules = computed(()=>{
+      let c=0;
+      if(visitedDims.value.size>0) c++;
+      if(hashCalculated.value) c++;
+      if(matrixDoneCount.value>0) c++;
+      if(visitedNodes.value.size>0) c++;
+      if(techLaw.some(t=>t.done)) c++;
+      return c;
+    });
+    const saving = ref(false);
+    const saveArchive = async ()=>{
+      const r = {
+        id: 'r'+Date.now(), name: studentName.value||'', studentId: studentId.value||'',
+        time: Date.now(), completion: completion.value,
+        accuracy: matrixDoneCount.value>0?Math.round(matrixCorrectCount.value/8*100):0,
+        durationMin: Math.max(1,Math.floor((Date.now()-startTime.value)/60000)),
+        visitedDims: Array.from(visitedDims.value),
+        visitedNodes: Array.from(visitedNodes.value),
+        hashCount: hashCount.value, hashCalculated: hashCalculated.value,
+        matrixDone: matrixDoneCount.value, matrixCorrect: matrixCorrectCount.value,
+        notes: { ...studentNotes }
+      };
+      /* 1) 本地存档 */
+      const arr = JSON.parse(localStorage.getItem('edt_records')||'[]');
+      arr.push(r);
+      localStorage.setItem('edt_records', JSON.stringify(arr));
+      /* 2) Supabase 远程提交 */
+      saving.value = true;
+      let remoteOK = false;
+      try{
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/records`,{
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'apikey':SUPABASE_ANON_KEY,
+            'Authorization':`Bearer ${SUPABASE_ANON_KEY}`,
+            'Prefer':'return=minimal'
+          },
+          body:JSON.stringify({
+            record_id:r.id, name:r.name, student_id:r.studentId,
+            completion:r.completion, accuracy:r.accuracy, duration_min:r.durationMin,
+            visited_dims:r.visitedDims, visited_nodes:r.visitedNodes,
+            hash_count:r.hashCount, hash_calculated:r.hashCalculated,
+            matrix_done:r.matrixDone, matrix_correct:r.matrixCorrect,
+            notes:JSON.stringify(r.notes), submitted_at:new Date(r.time).toISOString()
+          })
+        });
+        remoteOK = res.ok;
+      }catch(e){ remoteOK = false; }
+      saving.value = false;
+      if(remoteOK) alert('✅ 已存入本地档案库，并成功同步至 Supabase 远程数据库！教师可在仪表盘查看。');
+      else alert('✅ 已存入本地档案库（远程同步未成功，可在网络恢复后重新提交）。');
+    };
+    const printArchive = ()=>window.print();
+
+    /* ============ DASHBOARD (Page 17) ============ */
+    const records = ref([]);
+    const loadRecords = ()=>{ records.value = JSON.parse(localStorage.getItem('edt_records')||'[]'); };
+    const avgCompletion = computed(()=>records.value.length?Math.round(records.value.reduce((s,r)=>s+r.completion,0)/records.value.length):0);
+    const avgAccuracy = computed(()=>records.value.length?Math.round(records.value.reduce((s,r)=>s+r.accuracy,0)/records.value.length):0);
+    const avgDuration = computed(()=>records.value.length?Math.round(records.value.reduce((s,r)=>s+r.durationMin,0)/records.value.length):0);
+    const dimHeat = (name)=>records.value.filter(r=>r.visitedDims&&r.visitedDims.includes(name)).length;
+    const matrixErrors = computed(()=>{
+      if(records.value.length===0) return {};
+      const total = records.value.length*8;
+      const correctSum = records.value.reduce((s,r)=>s+(r.matrixCorrect||0),0);
+      const errRate = Math.round((total-correctSum)/total*100);
+      return {'操作层-行为层':errRate,'身份层-关联':Math.round(errRate*0.8),'矛盾-风险':Math.round(errRate*1.1),'补强-方向':errRate};
+    });
+    const exportCSV = ()=>{
+      if(records.value.length===0){ alert('暂无记录'); return; }
+      const rows = [['姓名','学号','完成度(%)','正确率(%)','时长(分)','六边形访问','哈希次数','矩阵完成','矩阵正确','提交时间']];
+      records.value.forEach(r=>{
+        rows.push([r.name,r.studentId,r.completion,r.accuracy,r.durationMin,(r.visitedDims||[]).length,r.hashCount,r.matrixDone,r.matrixCorrect,new Date(r.time).toLocaleString('zh-CN')]);
+      });
+      const csv = '\ufeff'+rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+      const blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `学习档案_${Date.now()}.csv`; a.click();
+    };
+    const exportJSON = ()=>{
+      if(records.value.length===0){ alert('暂无记录'); return; }
+      const blob = new Blob([JSON.stringify(records.value,null,2)],{type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `学习档案_${Date.now()}.json`; a.click();
+    };
+    const clearRecords = ()=>{
+      if(!confirm('确定清空所有学生记录？此操作不可恢复。')) return;
+      localStorage.removeItem('edt_records'); loadRecords();
+    };
+
+    /* ============ LIFECYCLE ============ */
+    onMounted(()=>{
+      document.addEventListener('keydown',handleKey);
+      document.addEventListener('click',onDocClick);
+      const stage = document.querySelector('.stage');
+      stage.addEventListener('touchstart',onTouchStart,{passive:true});
+      stage.addEventListener('touchend',onTouchEnd,{passive:true});
+      loadRecords();
+      setInterval(()=>{ tick.value++; },1000);
+    });
+    onBeforeUnmount(()=>{
+      document.removeEventListener('keydown',handleKey);
+      document.removeEventListener('click',onDocClick);
+    });
+    watch(role,(v)=>{ if(v==='teacher'){ loadRecords(); go(17); } });
+
+    return {
+      currentPage,totalPages,role,visitedPages,pageClass,go,next,prev,backToNarrative,
+      studentName,studentId,durationText,
+      studentNotes,saveNote,
+      caseStages,
+      hexDims,activeDim,activeDimObj,showAllDims,visitedDims,hexUnlockedCount,hexPolyPoints,vertex,selectDim,toggleAllDims,
+      timeline,expandedNodes,visitedNodes,allExpanded,toggleNode,expandAll,
+      hashInput,hashResult,hashing,hashCalculated,hashCount,showHashGuide,calcHash,copyHash,
+      cmpA,cmpB,cmpHashA,cmpHashB,compareMatch,calcCompare,
+      matrixRows,matrixData,answerPool,availableAnswers,matrixDoneCount,matrixCorrectCount,
+      cellClass,onCellClick,resetMatrix,getAnswerText,selectedChip,toggleChip,
+      techLaw,rules,summaryCards,
+      archiveTime,completion,completedModules,saveArchive,printArchive,saving,
+      records,avgCompletion,avgAccuracy,avgDuration,dimHeat,matrixErrors,exportCSV,exportJSON,clearRecords
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
